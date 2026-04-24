@@ -179,6 +179,56 @@ async function addMedicineToCart(medicineId) {
   showToast('Medicine added to cart', 'success');
 }
 
+async function updateMedicineCartQuantity(orderId, quantity) {
+  if (quantity <= 0) {
+    await removeMedicineFromCart(orderId);
+    return;
+  }
+
+  const response = await fetch(
+    `${MEDICINES_API_BASE_URL}/orders/cart/${encodeURIComponent(orderId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        role: 'patient',
+      },
+      body: JSON.stringify({ quantity }),
+    },
+  );
+
+  if (!response.ok) {
+    showToast('Unable to update cart item', 'error');
+    return;
+  }
+
+  await loadCartOrders();
+  renderCartSummary();
+  renderCartItems();
+}
+
+async function removeMedicineFromCart(orderId) {
+  const response = await fetch(
+    `${MEDICINES_API_BASE_URL}/orders/cart/${encodeURIComponent(orderId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    showToast('Unable to remove cart item', 'error');
+    return;
+  }
+
+  await loadCartOrders();
+  renderCartSummary();
+  renderCartItems();
+  showToast('Medicine removed from cart', 'info');
+}
+
 function renderCartSummary() {
   const bar = document.getElementById('medCartBar');
   const cartCount = cartOrders.reduce((sum, order) => sum + order.quantity, 0);
@@ -233,8 +283,18 @@ function renderCartItems() {
     row.querySelector('.cart-item-icon').innerHTML =
       MED_ICONS[order.medicine.category] || '<i class="fa-solid fa-capsules"></i>';
     row.querySelector('.cart-item-name').textContent = order.medicine.name;
-    row.querySelector('.cart-item-qty').textContent = `Qty ${order.quantity} | ${order.medicine.category}`;
+    row.querySelector('.cart-item-qty').textContent = order.medicine.category;
+    row.querySelector('.cart-item-qty-value').textContent = order.quantity;
     row.querySelector('.cart-item-price').textContent = `Rs ${order.totalPrice.toFixed(2)}`;
+    row.querySelector('.cart-minus').onclick = async function () {
+      await updateMedicineCartQuantity(order.id, order.quantity - 1);
+    };
+    row.querySelector('.cart-plus').onclick = async function () {
+      await updateMedicineCartQuantity(order.id, order.quantity + 1);
+    };
+    row.querySelector('.cart-remove').onclick = async function () {
+      await removeMedicineFromCart(order.id);
+    };
 
     cartList.appendChild(frag);
   });

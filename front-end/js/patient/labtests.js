@@ -1,195 +1,342 @@
-/* MEDBITS – labtests.js
-   Pure logic. All HTML lives in labtests.html <template> tags.
-*/
+/* MEDBITS - labtests.js */
 
-// ── HELPER ───────────────────────────────────────────────────────
+const LABTESTS_API_BASE_URL = 'http://localhost:3000';
+
+const LAB_TEST_ICONS = {
+  'Full Body Check Up': '🧪',
+  Diabetes: '🩸',
+  'Blood Studies': '🔬',
+  Heart: '🫀',
+  Kidney: '🧫',
+  Liver: '⚗️',
+  Thyroid: '🦋',
+  Vitamin: '🌿',
+  "Women's Health": '🌸',
+  'Senior Citizen': '🧓',
+};
+
+let labTests = [];
+let cartBookings = [];
+let bookingHistory = [];
+let activeLabCategory = 'Full Body Check Up';
+
 function useTemplate(id) {
   return document.getElementById(id).content.cloneNode(true);
 }
 
-// ── PAGE INIT ─────────────────────────────────────────────────────
-
-function renderLabTests() {
-  updateLabCartBar();
-  showLabCategory('Full Body Check Up');
-  renderTopTests();
-  renderLabOrders();
+async function initializeLabTestsPage() {
+  await Promise.all([loadLabTests(), loadLabCart(), loadLabHistory()]);
+  renderLabTests();
 }
 
-// ── CATEGORY / SEARCH ─────────────────────────────────────────────
+async function loadLabTests() {
+  const response = await fetch(`${LABTESTS_API_BASE_URL}/labtests`, {
+    headers: {
+      role: 'patient',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to load lab tests');
+  }
+
+  labTests = await response.json();
+}
+
+async function loadLabCart() {
+  const session = requireRole('patient');
+  if (!session) return;
+
+  const response = await fetch(
+    `${LABTESTS_API_BASE_URL}/labtests/cart/${encodeURIComponent(session.id)}`,
+    {
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load lab cart');
+  }
+
+  cartBookings = await response.json();
+}
+
+async function loadLabHistory() {
+  const session = requireRole('patient');
+  if (!session) return;
+
+  const response = await fetch(
+    `${LABTESTS_API_BASE_URL}/labtests/history/${encodeURIComponent(session.id)}`,
+    {
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load lab history');
+  }
+
+  bookingHistory = await response.json();
+}
+
+function renderLabTests() {
+  renderLabCartSummary();
+  renderLabCartItems();
+  renderLabOrders();
+  renderTopTests();
+
+  if (activeLabCategory === 'All Tests') {
+    showAllLab();
+    return;
+  }
+
+  showLabCategory(activeLabCategory);
+}
 
 function showLabCategory(cat) {
-  const tests = DB.labTests.filter(t => t.category === cat);
-  setText('labCategoryTitle', cat + ' (' + tests.length + ')');
+  activeLabCategory = cat;
+  const tests = labTests.filter((test) => test.category === cat);
+  setText('labCategoryTitle', `${cat} (${tests.length})`);
   renderLabProducts(tests);
 }
 
 function showAllLab() {
-  setText('labCategoryTitle', 'All Tests (' + DB.labTests.length + ')');
-  renderLabProducts(DB.labTests);
+  activeLabCategory = 'All Tests';
+  setText('labCategoryTitle', `All Tests (${labTests.length})`);
+  renderLabProducts(labTests);
 }
 
 function searchLabTests(q) {
-  if (!q) { showLabCategory('Full Body Check Up'); return; }
-  const results = DB.labTests.filter(t => t.name.toLowerCase().includes(q.toLowerCase()));
-  setText('labCategoryTitle', 'Results for "' + q + '"');
+  const query = q.trim().toLowerCase();
+  if (!query) {
+    showLabCategory('Full Body Check Up');
+    return;
+  }
+
+  const results = labTests.filter((test) =>
+    test.name.toLowerCase().includes(query),
+  );
+  setText('labCategoryTitle', `Results for "${q}"`);
   renderLabProducts(results);
 }
-
-// ── PRODUCT CARDS ─────────────────────────────────────────────────
 
 function renderLabProducts(tests) {
   fillLabGrid(document.getElementById('labProductGrid'), tests);
 }
 
 function renderTopTests() {
-  fillLabGrid(document.getElementById('topLabGrid'), DB.labTests.slice(0, 4));
+  fillLabGrid(document.getElementById('topLabGrid'), labTests.slice(0, 4));
 }
 
-// Fill any product grid element with lab test cards
 function fillLabGrid(grid, tests) {
   if (!grid) return;
   grid.innerHTML = '';
 
   if (!tests.length) {
-    const msg = document.createElement('p'); msg.className = 'text-muted'; msg.textContent = 'No tests in this category.'; grid.appendChild(msg);
+    const msg = document.createElement('p');
+    msg.className = 'text-muted';
+    msg.textContent = 'No tests in this category.';
+    grid.appendChild(msg);
     return;
   }
 
-  tests.forEach(t => {
+  tests.forEach((test) => {
     const frag = useTemplate('tpl-lab-card');
     const card = frag.querySelector('.product-card');
 
-    card.querySelector('.lab-name').textContent  = t.name;
-    card.querySelector('.lab-price').textContent = '₹ ' + t.price;
-
-    // Show "N tests included" if available, else hide
-    const subEl = card.querySelector('.lab-tests');
-    if (t.tests) { subEl.textContent = t.tests + ' tests included'; }
-    else         { subEl.remove(); }
+    card.querySelector('.lab-icon').textContent =
+      LAB_TEST_ICONS[test.category] || '🧪';
+    card.querySelector('.lab-name').textContent = test.name;
+    card.querySelector('.lab-desc').textContent = test.description;
+    card.querySelector('.lab-price').textContent = `Rs ${test.price.toFixed(2)}`;
 
     const btn = card.querySelector('.lab-btn');
-    if (t.inCart) {
-      btn.textContent = 'Remove';
-      btn.className   = 'btn-remove';
-    }
-    btn.onclick = function() { toggleLabCart(t.id); };
+    btn.textContent = 'Add';
+    btn.className = 'btn-add lab-btn';
+    btn.onclick = async function () {
+      await addLabTestToCart(test.id);
+    };
 
     grid.appendChild(frag);
   });
 }
 
-function toggleLabCart(id) {
-  const t = DB.labTests.find(x => x.id === id);
-  t.inCart = !t.inCart;
-  updateLabCartBar();
-  showLabCategory(t.category);
-  renderTopTests();
+async function addLabTestToCart(labTestId) {
+  const session = requireRole('patient');
+  if (!session) return;
+
+  const response = await fetch(`${LABTESTS_API_BASE_URL}/labtests/book`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      role: 'patient',
+    },
+    body: JSON.stringify({
+      userId: session.id,
+      labTestId,
+    }),
+  });
+
+  if (!response.ok) {
+    showToast('Unable to add lab test', 'error');
+    return;
+  }
+
+  await loadLabCart();
+  renderLabCartSummary();
+  renderLabCartItems();
+  showToast('Lab test added to cart', 'success');
 }
 
-// ── CART BAR ─────────────────────────────────────────────────────
+async function removeLabTestFromCart(bookingId) {
+  const response = await fetch(
+    `${LABTESTS_API_BASE_URL}/labtests/cart/${encodeURIComponent(bookingId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
 
-function updateLabCartBar() {
-  const items = DB.labTests.filter(t => t.inCart);
-  const total = items.reduce((sum, t) => sum + t.price, 0);
-  const bar   = document.getElementById('labCartBar');
+  if (!response.ok) {
+    showToast('Unable to remove lab test', 'error');
+    return;
+  }
+
+  await loadLabCart();
+  renderLabCartSummary();
+  renderLabCartItems();
+  showToast('Lab test removed from cart', 'info');
+}
+
+function renderLabCartSummary() {
+  const bar = document.getElementById('labCartBar');
+  const cartTotal = cartBookings.reduce(
+    (sum, booking) => sum + booking.labTest.price,
+    0,
+  );
+
   if (!bar) return;
-  bar.classList.toggle('hidden', items.length === 0);
-  setText('labCartTotal', '₹ ' + total.toFixed(2));
-  setText('labCartCount', '(' + items.length + ' item' + (items.length !== 1 ? 's' : '') + ')');
+
+  bar.classList.toggle('hidden', cartBookings.length === 0);
+  setText('labCartTotal', `Rs ${cartTotal.toFixed(2)}`);
+  setText(
+    'labCartCount',
+    `(${cartBookings.length} item${cartBookings.length !== 1 ? 's' : ''})`,
+  );
 }
 
-function checkoutLab() {
-  const items = DB.labTests.filter(t => t.inCart);
-  const total = items.reduce((sum, t) => sum + t.price, 0);
+function showLabCart() {
+  const cartSection = document.getElementById('labCartSection');
+  if (!cartSection) return;
 
-  // Clone the cart modal template
-  const tpl   = document.getElementById('tpl-labCart');
-  const clone = tpl.content.cloneNode(true);
-
-  // Fill cart items inside the cloned template
-  const itemsEl = clone.querySelector('#labCartItems');
-  items.forEach(t => {
-    const row = useTemplate('tpl-lab-cart-item');
-    row.querySelector('.lab-ci-name').textContent  = t.name;
-    row.querySelector('.lab-ci-cat').textContent   = t.category;
-    row.querySelector('.lab-ci-price').textContent = '₹' + t.price;
-    itemsEl.appendChild(row);
-  });
-
-  clone.querySelector('#labCartModalTotal').textContent = '₹ ' + total.toFixed(2);
-
-  const modalContent = document.getElementById('modalContent');
-  modalContent.innerHTML = '';
-  modalContent.appendChild(clone);
-  document.getElementById('modalOverlay').classList.add('open');
+  cartSection.style.display = 'block';
+  cartSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function placeLabOrder() {
-  DB.labTests.filter(t => t.inCart).forEach(t => {
-    DB.labOrders.unshift({ id: 'LBORD' + Date.now(), test: t.name, date: today(), status: 'pending' });
-    t.inCart = false;
+function hideLabCart() {
+  const cartSection = document.getElementById('labCartSection');
+  if (!cartSection) return;
+
+  cartSection.style.display = 'none';
+}
+
+function renderLabCartItems() {
+  const cartList = document.getElementById('labCartItemsList');
+  const emptyState = document.getElementById('labCartEmptyState');
+  const totalEl = document.getElementById('labCartSubtotal');
+  const confirmBtn = document.getElementById('confirmLabBookingBtn');
+
+  if (!cartList || !emptyState || !totalEl || !confirmBtn) return;
+
+  cartList.innerHTML = '';
+
+  if (!cartBookings.length) {
+    emptyState.style.display = 'block';
+    confirmBtn.disabled = true;
+    setText('labCartSubtotal', 'Rs 0.00');
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  confirmBtn.disabled = false;
+
+  cartBookings.forEach((booking) => {
+    const frag = useTemplate('tpl-lab-cart-row');
+    const row = frag.querySelector('.cart-item');
+
+    row.querySelector('.lab-cart-icon').textContent =
+      LAB_TEST_ICONS[booking.labTest.category] || '🧪';
+    row.querySelector('.lab-cart-name').textContent = booking.labTest.name;
+    row.querySelector('.lab-cart-cat').textContent = booking.labTest.category;
+    row.querySelector('.lab-cart-price').textContent = `Rs ${booking.labTest.price.toFixed(2)}`;
+    row.querySelector('.lab-cart-remove').onclick = async function () {
+      await removeLabTestFromCart(booking.id);
+    };
+
+    cartList.appendChild(frag);
   });
-  closeModal();
+
+  const subtotal = cartBookings.reduce(
+    (sum, booking) => sum + booking.labTest.price,
+    0,
+  );
+  setText('labCartSubtotal', `Rs ${subtotal.toFixed(2)}`);
+}
+
+async function confirmLabBooking() {
+  const session = requireRole('patient');
+  if (!session || !cartBookings.length) return;
+
+  const response = await fetch(
+    `${LABTESTS_API_BASE_URL}/labtests/confirm/${encodeURIComponent(session.id)}`,
+    {
+      method: 'POST',
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    showToast('Unable to confirm lab booking', 'error');
+    return;
+  }
+
+  await Promise.all([loadLabCart(), loadLabHistory()]);
+  renderLabCartSummary();
+  renderLabCartItems();
+  renderLabOrders();
+  hideLabCart();
   showToast('Lab tests booked!', 'success');
-  renderLabTests();
 }
-
-// ── LAB ORDERS ────────────────────────────────────────────────────
 
 function renderLabOrders() {
   const el = document.getElementById('labOrderList');
   if (!el) return;
   el.innerHTML = '';
 
-  if (!DB.labOrders.length) {
-    const msg = document.createElement('p'); msg.className = 'text-muted'; msg.textContent = 'No lab orders yet.'; el.appendChild(msg);
+  if (!bookingHistory.length) {
+    const msg = document.createElement('p');
+    msg.className = 'text-muted';
+    msg.textContent = 'No booked lab tests yet.';
+    el.appendChild(msg);
     return;
   }
 
-  DB.labOrders.forEach(o => {
+  bookingHistory.forEach((booking) => {
     const frag = useTemplate('tpl-lab-order-row');
-    const row  = frag.querySelector('.order-item');
+    const row = frag.querySelector('.order-item');
 
-    row.querySelector('.lab-order-test').textContent = o.test;
-    row.querySelector('.lab-order-date').textContent = formatDate(o.date);
+    row.querySelector('.lab-order-test').textContent = booking.labTest.name;
+    row.querySelector('.lab-order-date').textContent = booking.labTest.category;
+    row.querySelector('.lab-order-badge').textContent = 'Booked';
 
-    const badge = row.querySelector('.lab-order-badge');
-    if (o.status === 'completed') {
-      badge.textContent = 'Completed';
-      badge.classList.add('badge-green');
-    } else {
-      badge.textContent = 'Pending';
-      badge.classList.add('badge-orange');
-    }
-
-    row.querySelector('.lab-order-delete').onclick = function() { deleteLabOrder(o.id); };
     el.appendChild(frag);
   });
-}
-
-function openAddLabTest() {
-  openModal(document.getElementById('tpl-addLabTest').innerHTML);
-}
-
-function addLabTest() {
-  const name = val('alt-name').trim();
-  if (!name) { showToast('Enter test name', 'error'); return; }
-  DB.labTests.push({
-    id: 'LAB' + Date.now(), name,
-    category: val('alt-cat'),
-    price:    +val('alt-price'),
-    tests:    +val('alt-tests') || null,
-    inCart:   false
-  });
-  closeModal();
-  showToast('Lab test added!', 'success');
-  renderLabTests();
-}
-
-function deleteLabOrder(id) {
-  if (!confirm('Delete this order?')) return;
-  DB.labOrders = DB.labOrders.filter(x => x.id !== id);
-  showToast('Order deleted', 'info');
-  renderLabOrders();
 }

@@ -1,5 +1,5 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
-import { CreateOrderInput, OrdersService } from './orders.service';
+import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { CreateOrderInput, OrdersService, UpdateCartOrderInput } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {
@@ -27,5 +27,21 @@ export class OrdersController {
   @Get('history/:userId')
   getPlacedOrdersByUserId(@Param('userId') userId: string) {
     return this.ordersService.getPlacedOrdersByUserId(userId);
+  }
+
+  @Put('cart/:orderId')
+  updateCartOrder(
+    @Param('orderId') orderId: string,
+    @Body() body: Partial<UpdateCartOrderInput>,
+  ) {
+    return this.ordersService.updateCartOrder({
+      orderId,
+      quantity: Number(body.quantity ?? 1),
+    });
+  }
+
+  @Delete('cart/:orderId')
+  removeCartOrder(@Param('orderId') orderId: string) {
+    return this.ordersService.removeCartOrder(orderId);
   }
 }

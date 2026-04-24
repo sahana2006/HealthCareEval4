@@ -17,6 +17,11 @@ export type CreateOrderInput = {
   quantity: number;
 };
 
+export type UpdateCartOrderInput = {
+  orderId: string;
+  quantity: number;
+};
+
 @Injectable()
 export class OrdersService {
   private readonly orders: Order[] = [];
@@ -79,6 +84,34 @@ export class OrdersService {
     return this.orders
       .filter((item) => item.userId === userId && item.status === 'placed')
       .map((item) => this.toOrderDetails(item));
+  }
+
+  updateCartOrder(input: UpdateCartOrderInput) {
+    if (!input.orderId || input.quantity <= 0) {
+      throw new BadRequestException('orderId and a positive quantity are required');
+    }
+
+    const order = this.orders.find(
+      (item) => item.id === input.orderId && item.status === 'cart',
+    );
+    if (!order) {
+      throw new BadRequestException('Cart item not found');
+    }
+
+    order.quantity = input.quantity;
+    return this.toOrderDetails(order);
+  }
+
+  removeCartOrder(orderId: string) {
+    const orderIndex = this.orders.findIndex(
+      (item) => item.id === orderId && item.status === 'cart',
+    );
+    if (orderIndex === -1) {
+      throw new BadRequestException('Cart item not found');
+    }
+
+    const [removedOrder] = this.orders.splice(orderIndex, 1);
+    return this.toOrderDetails(removedOrder);
   }
 
   private toOrderDetails(order: Order) {
