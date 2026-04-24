@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PatientsService } from '../patients/patients.service';
 
 export type UserRole = 'admin' | 'patient' | 'doctor' | 'frontdesk';
 
@@ -10,10 +11,15 @@ type User = {
   role: UserRole;
 };
 
-type SafeUser = Omit<User, 'password'>;
+type SafeUser = Omit<User, 'password'> & {
+  firstName?: string;
+  lastName?: string;
+};
 
 @Injectable()
 export class UsersService {
+  constructor(private readonly patientsService: PatientsService) {}
+
   private readonly users: User[] = [
     {
       id: 'ADM001',
@@ -52,6 +58,16 @@ export class UsersService {
     }
 
     const { password: _password, ...safeUser } = user;
-    return safeUser;
+    if (safeUser.role !== 'patient') {
+      return safeUser;
+    }
+
+    const patientProfile = this.patientsService.getPatientByUserId(safeUser.id);
+
+    return {
+      ...safeUser,
+      firstName: patientProfile.firstName,
+      lastName: patientProfile.lastName,
+    };
   }
 }

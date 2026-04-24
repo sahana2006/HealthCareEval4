@@ -6,15 +6,7 @@
 let DB = {};
 
 async function loadDB() {
-  try {
-    const res = await fetch('data/mockdata.json');
-    const json = await res.json();
-    // Make a deep copy so inCart flags work at runtime
-    DB = JSON.parse(JSON.stringify(json));
-  } catch (e) {
-    // Fallback: use inline data (works when opening HTML files directly)
-    DB = getInlineDB();
-  }
+  DB = getInlineDB();
 }
 
 function getInlineDB() {

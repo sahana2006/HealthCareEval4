@@ -104,6 +104,10 @@ function updateTopbarUser() {
     // Use the real logged-in user's name from the session
     firstName = session.firstName;
     lastName  = session.lastName || '';
+  } else if (session && session.name) {
+    const [derivedFirstName, ...rest] = session.name.trim().split(/\s+/);
+    firstName = derivedFirstName || '';
+    lastName = rest.join(' ');
   } else if (typeof DB !== 'undefined' && DB.patient) {
     // Fallback to seed data (should not normally happen on a protected page)
     firstName = DB.patient.firstName;

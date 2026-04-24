@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
+import { PatientsModule } from '../patients/patients.module';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
 @Module({
+  imports: [PatientsModule],
   controllers: [UsersController],
   providers: [UsersService],
 })
