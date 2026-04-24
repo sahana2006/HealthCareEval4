@@ -19,6 +19,11 @@ export type CreateAppointmentInput = {
   slot: string;
 };
 
+export type UpdateAppointmentInput = {
+  date?: string;
+  slot?: string;
+};
+
 @Injectable()
 export class AppointmentsService {
   private readonly appointments: Appointment[] = [
@@ -37,6 +42,14 @@ export class AppointmentsService {
       date: '2026-04-01',
       slot: '11:00',
       status: 'completed',
+    },
+    {
+      id: 'APT003',
+      userId: 'PAT001',
+      doctorId: 'DOC008',
+      date: '2026-05-02',
+      slot: '10:30',
+      status: 'upcoming',
     },
   ];
 
@@ -91,9 +104,18 @@ export class AppointmentsService {
     return this.toAppointmentDetails(appointment);
   }
 
-  getAppointmentsByUserId(userId: string) {
+  getAppointmentsByUserId(userId: string, status?: string) {
+    const normalizedStatus =
+      status === 'upcoming' || status === 'completed' ? status : undefined;
+
     return this.appointments
-      .filter((appointment) => appointment.userId === userId)
+      .filter((appointment) => {
+        if (appointment.userId !== userId) {
+          return false;
+        }
+
+        return normalizedStatus ? appointment.status === normalizedStatus : true;
+      })
       .map((appointment) => this.toAppointmentDetails(appointment));
   }
 
@@ -119,6 +141,44 @@ export class AppointmentsService {
         appointment.doctorId === doctorId &&
         appointment.status === 'completed',
     );
+  }
+
+  updateAppointment(appointmentId: string, input: UpdateAppointmentInput) {
+    const appointment = this.appointments.find((item) => item.id === appointmentId);
+    if (!appointment) {
+      throw new BadRequestException('Appointment not found');
+    }
+
+    if (appointment.status !== 'upcoming') {
+      throw new BadRequestException('Only upcoming appointments can be modified');
+    }
+
+    const nextDate = input.date?.trim() || appointment.date;
+    const nextSlot = input.slot?.trim() || appointment.slot;
+    if (!nextDate || !nextSlot) {
+      throw new BadRequestException('date and slot are required');
+    }
+
+    const doctor = this.doctorsService.getDoctorById(appointment.doctorId);
+    if (!doctor.slots.includes(nextSlot)) {
+      throw new BadRequestException('Invalid doctor slot');
+    }
+
+    const isAlreadyBooked = this.appointments.some(
+      (item) =>
+        item.id !== appointmentId &&
+        item.doctorId === appointment.doctorId &&
+        item.date === nextDate &&
+        item.slot === nextSlot,
+    );
+    if (isAlreadyBooked) {
+      throw new BadRequestException('This slot is already booked');
+    }
+
+    appointment.date = nextDate;
+    appointment.slot = nextSlot;
+
+    return this.toAppointmentDetails(appointment);
   }
 
   private toAppointmentDetails(appointment: Appointment) {

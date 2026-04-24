@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import {
   AppointmentsService,
   CreateAppointmentInput,
+  UpdateAppointmentInput,
 } from './appointments.service';
 
 @Controller('appointments')
@@ -19,8 +20,11 @@ export class AppointmentsController {
   }
 
   @Get('user/:userId')
-  getAppointmentsByUserId(@Param('userId') userId: string) {
-    return this.appointmentsService.getAppointmentsByUserId(userId);
+  getAppointmentsByUserId(
+    @Param('userId') userId: string,
+    @Query('status') status?: string,
+  ) {
+    return this.appointmentsService.getAppointmentsByUserId(userId, status);
   }
 
   @Get('completed/:userId')
@@ -31,5 +35,16 @@ export class AppointmentsController {
   @Get('doctor/:doctorId')
   getAppointmentsByDoctorId(@Param('doctorId') doctorId: string) {
     return this.appointmentsService.getAppointmentsByDoctorId(doctorId);
+  }
+
+  @Put(':id')
+  updateAppointment(
+    @Param('id') id: string,
+    @Body() body: Partial<UpdateAppointmentInput>,
+  ) {
+    return this.appointmentsService.updateAppointment(id, {
+      date: body.date?.trim(),
+      slot: body.slot?.trim(),
+    });
   }
 }
