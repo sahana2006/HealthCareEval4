@@ -35,16 +35,16 @@ async function loadData() {
 
 // --- Session management (localStorage) ---
 function getSession() {
-  const raw = localStorage.getItem('medbits_session');
+  const raw = localStorage.getItem('user');
   return raw ? JSON.parse(raw) : null;
 }
 
 function setSession(data) {
-  localStorage.setItem('medbits_session', JSON.stringify(data));
+  localStorage.setItem('user', JSON.stringify(data));
 }
 
 function clearSession() {
-  localStorage.removeItem('medbits_session');
+  localStorage.removeItem('user');
   localStorage.removeItem('medbits_selected_patient');
   localStorage.removeItem('medbits_selected_specialty');
   localStorage.removeItem('medbits_selected_doctor');
@@ -186,7 +186,11 @@ function navigateTo(page) {
 // --- Render sidebar + topbar into page ---
 function renderShell(activePage) {
   const session = getSession();
-  const userName = session?.displayName || 'Sarah Williams';
+  if (!session || session.role !== 'frontdesk') {
+    window.location.href = '../login.html';
+    return;
+  }
+  const userName = session?.name || 'Frontdesk User';
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', href: 'dashboard.html', icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>` },

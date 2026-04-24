@@ -11,7 +11,7 @@
    ============================================ */
 
 // ── SESSION KEY (must match auth.js exactly) ──────────────────────
-const SESSION_KEY = 'medbits_session';
+const SESSION_KEY = 'user';
 
 // Read the current session from localStorage.
 // Returns the session object, or null if not logged in.
@@ -27,6 +27,15 @@ function getSession() {
 // Remove the session (used by logout in components.js)
 function clearSession() {
   localStorage.removeItem(SESSION_KEY);
+}
+
+function requireRole(expectedRole) {
+  const user = getSession();
+  if (!user || user.role !== expectedRole) {
+    window.location.href = '../login.html';
+    return null;
+  }
+  return user;
 }
 
 // ── DATE HELPERS ──────────────────────────────────────────────────
