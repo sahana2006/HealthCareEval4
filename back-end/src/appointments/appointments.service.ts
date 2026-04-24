@@ -30,6 +30,14 @@ export class AppointmentsService {
       slot: '10:00',
       status: 'completed',
     },
+    {
+      id: 'APT002',
+      userId: 'PAT001',
+      doctorId: 'DOC002',
+      date: '2026-04-01',
+      slot: '11:00',
+      status: 'completed',
+    },
   ];
 
   constructor(private readonly doctorsService: DoctorsService) {}
@@ -89,10 +97,28 @@ export class AppointmentsService {
       .map((appointment) => this.toAppointmentDetails(appointment));
   }
 
+  getCompletedAppointmentsByUserId(userId: string) {
+    return this.appointments
+      .filter(
+        (appointment) =>
+          appointment.userId === userId && appointment.status === 'completed',
+      )
+      .map((appointment) => this.toAppointmentDetails(appointment));
+  }
+
   getAppointmentsByDoctorId(doctorId: string) {
     return this.appointments
       .filter((appointment) => appointment.doctorId === doctorId)
       .map((appointment) => this.toAppointmentDetails(appointment));
+  }
+
+  hasCompletedAppointment(userId: string, doctorId: string): boolean {
+    return this.appointments.some(
+      (appointment) =>
+        appointment.userId === userId &&
+        appointment.doctorId === doctorId &&
+        appointment.status === 'completed',
+    );
   }
 
   private toAppointmentDetails(appointment: Appointment) {

@@ -23,6 +23,11 @@ export class AppointmentsController {
     return this.appointmentsService.getAppointmentsByUserId(userId);
   }
 
+  @Get('completed/:userId')
+  getCompletedAppointmentsByUserId(@Param('userId') userId: string) {
+    return this.appointmentsService.getCompletedAppointmentsByUserId(userId);
+  }
+
   @Get('doctor/:doctorId')
   getAppointmentsByDoctorId(@Param('doctorId') doctorId: string) {
     return this.appointmentsService.getAppointmentsByDoctorId(doctorId);
