@@ -54,3 +54,24 @@ async function handleLogin(email, password) {
     return 'Unable to reach server. Ensure backend is running on port 3000.';
   }
 }
+
+async function handleSignup(payload) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      return errorBody?.message || 'Unable to create account.';
+    }
+
+    return null;
+  } catch (_error) {
+    return 'Unable to reach server. Ensure backend is running on port 3000.';
+  }
+}

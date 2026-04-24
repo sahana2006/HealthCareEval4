@@ -39,6 +39,11 @@ export class PatientsService {
     return { ...patient };
   }
 
+  createPatientProfile(profile: PatientProfile): PatientProfile {
+    this.patients.push({ ...profile });
+    return { ...profile };
+  }
+
   updatePatientByUserId(
     userId: string,
     updates: UpdatePatientProfileInput,

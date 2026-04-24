@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PatientsService } from '../patients/patients.service';
 
 export type UserRole = 'admin' | 'patient' | 'doctor' | 'frontdesk';
@@ -14,6 +14,18 @@ type User = {
 type SafeUser = Omit<User, 'password'> & {
   firstName?: string;
   lastName?: string;
+};
+
+export type SignupInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dob: string;
+  gender: string;
+  bloodGroup: string;
+  guardianName: string;
+  password: string;
 };
 
 @Injectable()
@@ -69,5 +81,55 @@ export class UsersService {
       firstName: patientProfile.firstName,
       lastName: patientProfile.lastName,
     };
+  }
+
+  signupPatient(input: SignupInput): SafeUser {
+    const email = input.email.trim().toLowerCase();
+    if (this.users.some((item) => item.email.toLowerCase() === email)) {
+      throw new BadRequestException('Email is already registered');
+    }
+
+    const nextId = this.generateNextPatientId();
+    const safeName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+
+    const user: User = {
+      id: nextId,
+      name: safeName,
+      email,
+      password: input.password,
+      role: 'patient',
+    };
+
+    this.users.push(user);
+    this.patientsService.createPatientProfile({
+      userId: nextId,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      dob: input.dob.trim(),
+      gender: input.gender.trim(),
+      bloodGroup: input.bloodGroup.trim(),
+      phone: input.phone.trim(),
+      email,
+      guardianName: input.guardianName.trim(),
+    });
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+    };
+  }
+
+  private generateNextPatientId(): string {
+    const patientIds = this.users
+      .filter((item) => item.role === 'patient')
+      .map((item) => Number.parseInt(item.id.replace('PAT', ''), 10))
+      .filter((value) => Number.isFinite(value));
+
+    const nextNumber = (patientIds.length ? Math.max(...patientIds) : 0) + 1;
+    return `PAT${nextNumber.toString().padStart(3, '0')}`;
   }
 }
