@@ -5,6 +5,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { LabTestsModule } from './labtests/labtests.module';
+import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { OrdersModule } from './orders/orders.module';
 import { PatientsModule } from './patients/patients.module';
@@ -17,6 +18,7 @@ import { UsersModule } from './users/users.module';
     MedicinesModule,
     OrdersModule,
     LabTestsModule,
+    MedicalRecordsModule,
     DoctorsModule,
     AppointmentsModule,
     FeedbackModule,
