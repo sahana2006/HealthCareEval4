@@ -7,6 +7,8 @@ let doctors = [];
 let userAppointments = [];
 let selectedDoctor = null;
 let selectedSlot = null;
+let editingAppointment = null;
+let editingAppointmentId = null;
 
 function useTemplate(id) {
   return document.getElementById(id).content.cloneNode(true);
@@ -127,6 +129,16 @@ function fillApptList(containerId, appointments, isPast) {
     card.querySelector('.appt-doctor').textContent = appointment.doctor.name;
     card.querySelector('.appt-info').textContent =
       `${appointment.doctor.specialization} | ${formatDate(appointment.date)} at ${appointment.slot}`;
+
+    if (!isPast) {
+      card.querySelector('.appt-edit-btn').onclick = function () {
+        void openAppointmentEditModal(appointment.id);
+      };
+      card.querySelector('.appt-cancel-btn').onclick = function () {
+        void cancelAppointment(appointment.id);
+      };
+    }
+
     el.appendChild(frag);
   });
 }
@@ -334,4 +346,184 @@ async function confirmAppointment() {
   refreshApptLists();
   showToast('Appointment booked!', 'success');
   await loadSlotsForSelectedDoctor(date);
+}
+
+async function openAppointmentEditModal(appointmentId) {
+  editingAppointment = userAppointments.find(
+    (appointment) => appointment.id === appointmentId && appointment.status === 'upcoming',
+  ) || null;
+
+  if (!editingAppointment) {
+    showToast('Only upcoming appointments can be edited', 'error');
+    return;
+  }
+
+  editingAppointmentId = appointmentId;
+  currentEditId = appointmentId;
+  selectedSlot = editingAppointment.slot;
+
+  openModal(`
+    <div class="modal-title">Edit Appointment</div>
+    <div class="form-group mb-16">
+      <label>Doctor</label>
+      <input id="editAppointmentDoctor" value="${editingAppointment.doctor.name}" disabled>
+    </div>
+    <div class="form-group mb-16">
+      <label>Date</label>
+      <input type="date" id="editAppointmentDate" min="${today()}" value="${editingAppointment.date}">
+    </div>
+    <div class="form-group mb-16">
+      <label>Available Slots</label>
+      <div id="editAppointmentSlots" class="slot-grid"></div>
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveAppointmentEdit()">Save Changes</button>
+  `);
+
+  document.getElementById('editAppointmentDate').addEventListener('change', function () {
+    selectedSlot = null;
+    void loadEditSlots(this.value);
+  });
+
+  await loadEditSlots(editingAppointment.date);
+}
+
+async function loadEditSlots(date) {
+  if (!editingAppointment || !date) return;
+
+  const response = await fetch(
+    `${APPOINTMENTS_API_BASE_URL}/doctors/${encodeURIComponent(editingAppointment.doctorId)}/slots?date=${encodeURIComponent(date)}`,
+    {
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    showToast('Unable to load slots', 'error');
+    return;
+  }
+
+  const slots = await response.json();
+  const displaySlots = new Set(slots);
+  if (date === editingAppointment.date) {
+    displaySlots.add(editingAppointment.slot);
+  }
+
+  if (!displaySlots.has(selectedSlot)) {
+    selectedSlot = date === editingAppointment.date ? editingAppointment.slot : null;
+  }
+
+  renderEditSlots(Array.from(displaySlots));
+}
+
+function renderEditSlots(slots) {
+  const container = document.getElementById('editAppointmentSlots');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (!slots.length) {
+    const msg = document.createElement('p');
+    msg.className = 'text-muted';
+    msg.textContent = 'No available slots for this date.';
+    container.appendChild(msg);
+    return;
+  }
+
+  slots.forEach((slot) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'slot-btn';
+    button.textContent = slot;
+    if (slot === selectedSlot) {
+      button.classList.add('selected');
+    }
+    button.onclick = function () {
+      selectedSlot = slot;
+      renderEditSlots(slots);
+    };
+    container.appendChild(button);
+  });
+}
+
+async function saveAppointmentEdit() {
+  if (!editingAppointment || !editingAppointmentId) {
+    showToast('No appointment selected', 'error');
+    return;
+  }
+
+  const date = val('editAppointmentDate');
+  if (!date) {
+    showToast('Please choose a date', 'error');
+    return;
+  }
+
+  if (!selectedSlot) {
+    showToast('Please choose a slot', 'error');
+    return;
+  }
+
+  const response = await fetch(
+    `${APPOINTMENTS_API_BASE_URL}/appointments/${encodeURIComponent(editingAppointmentId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        role: 'patient',
+      },
+      body: JSON.stringify({
+        date,
+        slot: selectedSlot,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    showToast(errorBody?.message || 'Unable to update appointment', 'error');
+    return;
+  }
+
+  await loadUserAppointments();
+  refreshApptLists();
+  editingAppointment = null;
+  editingAppointmentId = null;
+  closeModal();
+  showToast('Appointment updated', 'success');
+}
+
+async function cancelAppointment(appointmentId) {
+  const appointment = userAppointments.find(
+    (item) => item.id === appointmentId && item.status === 'upcoming',
+  );
+
+  if (!appointment) {
+    showToast('Only upcoming appointments can be cancelled', 'error');
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Cancel appointment with ${appointment.doctor.name} on ${formatDate(appointment.date)} at ${appointment.slot}?`,
+  );
+  if (!confirmed) return;
+
+  const response = await fetch(
+    `${APPOINTMENTS_API_BASE_URL}/appointments/${encodeURIComponent(appointmentId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    showToast(errorBody?.message || 'Unable to cancel appointment', 'error');
+    return;
+  }
+
+  await loadUserAppointments();
+  refreshApptLists();
+  showToast('Appointment cancelled', 'info');
 }

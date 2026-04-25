@@ -9,6 +9,8 @@ export type Order = {
   medicineId: string;
   quantity: number;
   status: OrderStatus;
+  cartId: string;
+  orderId: string | null;
 };
 
 export type CreateOrderInput = {
@@ -25,6 +27,7 @@ export type UpdateCartOrderInput = {
 @Injectable()
 export class OrdersService {
   private readonly orders: Order[] = [];
+  private readonly activeCartIds = new Map<string, string>();
 
   constructor(private readonly medicinesService: MedicinesService) {}
 
@@ -56,6 +59,8 @@ export class OrdersService {
       medicineId: input.medicineId,
       quantity: input.quantity,
       status: 'cart',
+      cartId: this.getOrCreateActiveCartId(input.userId),
+      orderId: null,
     };
 
     this.orders.unshift(order);
@@ -73,9 +78,18 @@ export class OrdersService {
       (item) => item.userId === userId && item.status === 'cart',
     );
 
+    if (!cartOrders.length) {
+      throw new BadRequestException('Cart is empty');
+    }
+
+    const orderId = `ORDER${Date.now()}`;
+
     cartOrders.forEach((item) => {
       item.status = 'placed';
+      item.orderId = orderId;
     });
+
+    this.activeCartIds.delete(userId);
 
     return cartOrders.map((item) => this.toOrderDetails(item));
   }
@@ -111,6 +125,13 @@ export class OrdersService {
     }
 
     const [removedOrder] = this.orders.splice(orderIndex, 1);
+    const hasRemainingCartItems = this.orders.some(
+      (item) => item.userId === removedOrder.userId && item.status === 'cart',
+    );
+    if (!hasRemainingCartItems) {
+      this.activeCartIds.delete(removedOrder.userId);
+    }
+
     return this.toOrderDetails(removedOrder);
   }
 
@@ -125,5 +146,24 @@ export class OrdersService {
       medicine,
       totalPrice: Number((medicine.price * order.quantity).toFixed(2)),
     };
+  }
+
+  private getOrCreateActiveCartId(userId: string) {
+    const existingCartOrder = this.orders.find(
+      (item) => item.userId === userId && item.status === 'cart',
+    );
+    if (existingCartOrder) {
+      this.activeCartIds.set(userId, existingCartOrder.cartId);
+      return existingCartOrder.cartId;
+    }
+
+    const existingCartId = this.activeCartIds.get(userId);
+    if (existingCartId) {
+      return existingCartId;
+    }
+
+    const cartId = `CART${Date.now()}`;
+    this.activeCartIds.set(userId, cartId);
+    return cartId;
   }
 }

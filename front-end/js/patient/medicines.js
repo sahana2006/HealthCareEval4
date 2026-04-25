@@ -133,6 +133,7 @@ function renderMedProducts(items) {
   items.forEach((medicine) => {
     const frag = useTemplate('tpl-med-card');
     const card = frag.querySelector('.product-card');
+    const existingCartOrder = cartOrders.find((order) => order.medicineId === medicine.id);
 
     card.querySelector('.med-icon').innerHTML = MED_ICONS[medicine.category] || '<i class="fa-solid fa-capsules"></i>';
     card.querySelector('.med-name').textContent = medicine.name;
@@ -140,10 +141,15 @@ function renderMedProducts(items) {
     card.querySelector('.med-price').textContent = `Rs ${medicine.price.toFixed(2)}`;
 
     const btn = card.querySelector('.med-btn');
-    btn.textContent = 'Add';
-    btn.className = 'btn-add med-btn';
+    btn.textContent = existingCartOrder ? 'Remove' : 'Add';
+    btn.className = `${existingCartOrder ? 'btn btn-outline' : 'btn-add'} med-btn`;
     btn.disabled = false;
     btn.onclick = async function () {
+      if (existingCartOrder) {
+        await removeMedicineFromCart(existingCartOrder.id);
+        return;
+      }
+
       await addMedicineToCart(medicine.id);
     };
 
@@ -174,8 +180,7 @@ async function addMedicineToCart(medicineId) {
   }
 
   await loadCartOrders();
-  renderCartSummary();
-  renderCartItems();
+  renderMedicines();
   showToast('Medicine added to cart', 'success');
 }
 
@@ -203,8 +208,7 @@ async function updateMedicineCartQuantity(orderId, quantity) {
   }
 
   await loadCartOrders();
-  renderCartSummary();
-  renderCartItems();
+  renderMedicines();
 }
 
 async function removeMedicineFromCart(orderId) {
@@ -224,8 +228,7 @@ async function removeMedicineFromCart(orderId) {
   }
 
   await loadCartOrders();
-  renderCartSummary();
-  renderCartItems();
+  renderMedicines();
   showToast('Medicine removed from cart', 'info');
 }
 
@@ -323,9 +326,7 @@ async function placeOrder() {
   }
 
   await Promise.all([loadCartOrders(), loadOrderHistory()]);
-  renderCartSummary();
-  renderCartItems();
-  renderOrderHistory();
+  renderMedicines();
   hideCart();
   showToast('Order placed successfully', 'success');
 }
@@ -349,18 +350,47 @@ function renderOrderHistory() {
     return;
   }
 
-  orderHistory.forEach((order) => {
+  const groupedOrders = groupItemsByOrderId(orderHistory);
+
+  groupedOrders.forEach((group) => {
     const frag = useTemplate('tpl-order-row');
     const row = frag.querySelector('.order-item');
+    const primaryOrder = group.items[0];
+    const itemSummary = group.items
+      .map((order) => `${order.medicine.name} x${order.quantity}`)
+      .join(', ');
+    const totalQuantity = group.items.reduce((sum, order) => sum + order.quantity, 0);
+    const totalPrice = group.items.reduce((sum, order) => sum + order.totalPrice, 0);
 
     row.querySelector('.order-icon').innerHTML =
-      MED_ICONS[order.medicine.category] || '<i class="fa-solid fa-capsules"></i>';
-    row.querySelector('.order-id').textContent = `Order #${order.id}`;
-    row.querySelector('.order-name').textContent = order.medicine.name;
+      MED_ICONS[primaryOrder.medicine.category] || '<i class="fa-solid fa-capsules"></i>';
+    row.querySelector('.order-id').textContent = `Order #${group.orderId}`;
+    row.querySelector('.order-name').textContent =
+      `${group.items.length} item${group.items.length !== 1 ? 's' : ''} in this order`;
     row.querySelector('.order-info').textContent =
-      `${order.medicine.category} | Qty ${order.quantity} | ${order.status}`;
-    row.querySelector('.order-total').textContent = `Rs ${order.totalPrice.toFixed(2)}`;
+      `${itemSummary} | Total Qty ${totalQuantity} | ${primaryOrder.status}`;
+    row.querySelector('.order-total').textContent = `Rs ${totalPrice.toFixed(2)}`;
 
     el.appendChild(frag);
   });
+}
+
+function groupItemsByOrderId(items) {
+  const groups = new Map();
+
+  items.forEach((item) => {
+    const orderId = item.orderId || item.id;
+    const existingGroup = groups.get(orderId);
+    if (existingGroup) {
+      existingGroup.items.push(item);
+      return;
+    }
+
+    groups.set(orderId, {
+      orderId,
+      items: [item],
+    });
+  });
+
+  return Array.from(groups.values());
 }

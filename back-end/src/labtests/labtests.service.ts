@@ -15,6 +15,8 @@ export type TestBooking = {
   userId: string;
   labTestId: string;
   status: TestBookingStatus;
+  cartId: string;
+  orderId: string | null;
 };
 
 export type CreateTestBookingInput = {
@@ -70,6 +72,7 @@ export class LabTestsService {
   ];
 
   private readonly testBookings: TestBooking[] = [];
+  private readonly activeCartIds = new Map<string, string>();
 
   findAllTests(): LabTest[] {
     return this.labTests.map((test) => ({ ...test }));
@@ -101,6 +104,8 @@ export class LabTestsService {
       userId: input.userId,
       labTestId: input.labTestId,
       status: 'cart',
+      cartId: this.getOrCreateActiveCartId(input.userId),
+      orderId: null,
     };
 
     this.testBookings.unshift(booking);
@@ -118,9 +123,18 @@ export class LabTestsService {
       (booking) => booking.userId === userId && booking.status === 'cart',
     );
 
+    if (!cartBookings.length) {
+      throw new BadRequestException('Lab cart is empty');
+    }
+
+    const orderId = `LABORD${Date.now()}`;
+
     cartBookings.forEach((booking) => {
       booking.status = 'booked';
+      booking.orderId = orderId;
     });
+
+    this.activeCartIds.delete(userId);
 
     return cartBookings.map((booking) => this.toBookingDetails(booking));
   }
@@ -140,6 +154,13 @@ export class LabTestsService {
     }
 
     const [removedBooking] = this.testBookings.splice(bookingIndex, 1);
+    const hasRemainingCartBookings = this.testBookings.some(
+      (booking) => booking.userId === removedBooking.userId && booking.status === 'cart',
+    );
+    if (!hasRemainingCartBookings) {
+      this.activeCartIds.delete(removedBooking.userId);
+    }
+
     return this.toBookingDetails(removedBooking);
   }
 
@@ -158,5 +179,24 @@ export class LabTestsService {
       ...booking,
       labTest,
     };
+  }
+
+  private getOrCreateActiveCartId(userId: string) {
+    const existingCartBooking = this.testBookings.find(
+      (booking) => booking.userId === userId && booking.status === 'cart',
+    );
+    if (existingCartBooking) {
+      this.activeCartIds.set(userId, existingCartBooking.cartId);
+      return existingCartBooking.cartId;
+    }
+
+    const existingCartId = this.activeCartIds.get(userId);
+    if (existingCartId) {
+      return existingCartId;
+    }
+
+    const cartId = `LABCART${Date.now()}`;
+    this.activeCartIds.set(userId, cartId);
+    return cartId;
   }
 }

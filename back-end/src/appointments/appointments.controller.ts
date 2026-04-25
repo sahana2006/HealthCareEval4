@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   AppointmentsService,
   CreateAppointmentInput,
@@ -46,5 +55,10 @@ export class AppointmentsController {
       date: body.date?.trim(),
       slot: body.slot?.trim(),
     });
+  }
+
+  @Delete(':id')
+  cancelAppointment(@Param('id') id: string) {
+    return this.appointmentsService.cancelAppointment(id);
   }
 }

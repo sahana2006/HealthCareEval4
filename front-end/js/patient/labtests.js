@@ -147,6 +147,9 @@ function fillLabGrid(grid, tests) {
   tests.forEach((test) => {
     const frag = useTemplate('tpl-lab-card');
     const card = frag.querySelector('.product-card');
+    const existingCartBooking = cartBookings.find(
+      (booking) => booking.labTestId === test.id,
+    );
 
     card.querySelector('.lab-icon').textContent =
       LAB_TEST_ICONS[test.category] || '🧪';
@@ -155,9 +158,14 @@ function fillLabGrid(grid, tests) {
     card.querySelector('.lab-price').textContent = `Rs ${test.price.toFixed(2)}`;
 
     const btn = card.querySelector('.lab-btn');
-    btn.textContent = 'Add';
-    btn.className = 'btn-add lab-btn';
+    btn.textContent = existingCartBooking ? 'Remove' : 'Add';
+    btn.className = `${existingCartBooking ? 'btn btn-outline' : 'btn-add'} lab-btn`;
     btn.onclick = async function () {
+      if (existingCartBooking) {
+        await removeLabTestFromCart(existingCartBooking.id);
+        return;
+      }
+
       await addLabTestToCart(test.id);
     };
 
@@ -187,8 +195,7 @@ async function addLabTestToCart(labTestId) {
   }
 
   await loadLabCart();
-  renderLabCartSummary();
-  renderLabCartItems();
+  renderLabTests();
   showToast('Lab test added to cart', 'success');
 }
 
@@ -209,8 +216,7 @@ async function removeLabTestFromCart(bookingId) {
   }
 
   await loadLabCart();
-  renderLabCartSummary();
-  renderLabCartItems();
+  renderLabTests();
   showToast('Lab test removed from cart', 'info');
 }
 
@@ -309,9 +315,7 @@ async function confirmLabBooking() {
   }
 
   await Promise.all([loadLabCart(), loadLabHistory()]);
-  renderLabCartSummary();
-  renderLabCartItems();
-  renderLabOrders();
+  renderLabTests();
   hideLabCart();
   showToast('Lab tests booked!', 'success');
 }
@@ -329,14 +333,43 @@ function renderLabOrders() {
     return;
   }
 
-  bookingHistory.forEach((booking) => {
+  const groupedBookings = groupLabBookingsByOrderId(bookingHistory);
+
+  groupedBookings.forEach((group) => {
     const frag = useTemplate('tpl-lab-order-row');
     const row = frag.querySelector('.order-item');
+    const primaryBooking = group.items[0];
+    const testSummary = group.items.map((booking) => booking.labTest.name).join(', ');
+    const totalPrice = group.items.reduce(
+      (sum, booking) => sum + booking.labTest.price,
+      0,
+    );
 
-    row.querySelector('.lab-order-test').textContent = booking.labTest.name;
-    row.querySelector('.lab-order-date').textContent = booking.labTest.category;
-    row.querySelector('.lab-order-badge').textContent = 'Booked';
+    row.querySelector('.lab-order-test').textContent = `Order #${group.orderId}`;
+    row.querySelector('.lab-order-date').textContent =
+      `${testSummary} | ${group.items.length} test${group.items.length !== 1 ? 's' : ''} | Rs ${totalPrice.toFixed(2)}`;
+    row.querySelector('.lab-order-badge').textContent = primaryBooking.status === 'booked' ? 'Booked' : primaryBooking.status;
 
     el.appendChild(frag);
   });
+}
+
+function groupLabBookingsByOrderId(items) {
+  const groups = new Map();
+
+  items.forEach((item) => {
+    const orderId = item.orderId || item.id;
+    const existingGroup = groups.get(orderId);
+    if (existingGroup) {
+      existingGroup.items.push(item);
+      return;
+    }
+
+    groups.set(orderId, {
+      orderId,
+      items: [item],
+    });
+  });
+
+  return Array.from(groups.values());
 }

@@ -181,6 +181,23 @@ export class AppointmentsService {
     return this.toAppointmentDetails(appointment);
   }
 
+  cancelAppointment(appointmentId: string) {
+    const appointmentIndex = this.appointments.findIndex(
+      (item) => item.id === appointmentId,
+    );
+    if (appointmentIndex === -1) {
+      throw new BadRequestException('Appointment not found');
+    }
+
+    const appointment = this.appointments[appointmentIndex];
+    if (appointment.status !== 'upcoming') {
+      throw new BadRequestException('Only upcoming appointments can be cancelled');
+    }
+
+    const [cancelledAppointment] = this.appointments.splice(appointmentIndex, 1);
+    return this.toAppointmentDetails(cancelledAppointment);
+  }
+
   private toAppointmentDetails(appointment: Appointment) {
     const doctor = this.doctorsService.getDoctorById(appointment.doctorId);
 

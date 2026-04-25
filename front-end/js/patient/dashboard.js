@@ -100,10 +100,20 @@ function renderUpcomingAppointments() {
         sub: `${appointment.doctor.specialization} | ${formatDate(appointment.date)} at ${appointment.slot} | ${appointment.status}`,
         badge: 'Upcoming',
         colour: 'badge-blue',
-        actionLabel: 'Edit',
-        onAction: () => {
-          void openAppointmentEditModal(appointment.id);
-        },
+        actions: [
+          {
+            label: 'Edit',
+            onClick: () => {
+              void openAppointmentEditModal(appointment.id);
+            },
+          },
+          {
+            label: 'Cancel',
+            onClick: () => {
+              void cancelDashboardAppointment(appointment.id);
+            },
+          },
+        ],
       }),
     );
   });
@@ -153,12 +163,18 @@ function createDashItem(row) {
     meta.appendChild(badge);
   }
 
-  if (row.actionLabel && typeof row.onAction === 'function') {
-    const button = document.createElement('button');
-    button.className = 'btn btn-outline btn-sm dash-action-btn';
-    button.textContent = row.actionLabel;
-    button.onclick = row.onAction;
-    meta.appendChild(button);
+  if (Array.isArray(row.actions)) {
+    row.actions.forEach((action) => {
+      if (!action?.label || typeof action.onClick !== 'function') {
+        return;
+      }
+
+      const button = document.createElement('button');
+      button.className = 'btn btn-outline btn-sm dash-action-btn';
+      button.textContent = action.label;
+      button.onclick = action.onClick;
+      meta.appendChild(button);
+    });
   }
 
   return frag;
@@ -320,4 +336,47 @@ async function saveAppointmentEdit() {
   dashboardSelectedSlot = null;
   closeModal();
   showToast('Appointment updated', 'success');
+}
+
+async function cancelDashboardAppointment(appointmentId) {
+  const appointment = dashboardUpcomingAppointments.find(
+    (item) => item.id === appointmentId && item.status === 'upcoming',
+  );
+
+  if (!appointment) {
+    showToast('Only upcoming appointments can be cancelled', 'error');
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Cancel appointment with ${appointment.doctor.name} on ${formatDate(appointment.date)} at ${appointment.slot}?`,
+  );
+  if (!confirmed) return;
+
+  const response = await fetch(
+    `${DASHBOARD_API_BASE_URL}/appointments/${encodeURIComponent(appointmentId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    showToast(errorBody?.message || 'Unable to cancel appointment', 'error');
+    return;
+  }
+
+  const session = requireRole('patient');
+  if (!session) return;
+
+  await Promise.all([
+    loadUpcomingAppointments(session.id),
+    loadBookedLabTests(session.id),
+    loadPendingLabTests(session.id),
+  ]);
+  renderDashboard();
+  showToast('Appointment cancelled', 'info');
 }
