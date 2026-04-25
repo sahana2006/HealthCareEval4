@@ -55,6 +55,13 @@ export class UsersService {
       role: 'doctor',
     },
     {
+      id: 'DOC008',
+      name: 'Dr. Kavita Sharma',
+      email: 'kavitha@medbits.com',
+      password: 'doctor123',
+      role: 'doctor',
+    },
+    {
       id: 'FD001',
       name: 'Priya Nair',
       email: 'frontdesk@medbits.com',
@@ -90,7 +97,8 @@ export class UsersService {
     }
 
     const nextId = this.generateNextPatientId();
-    const safeName = `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
+    const safeName =
+      `${input.firstName.trim()} ${input.lastName.trim()}`.trim();
 
     const user: User = {
       id: nextId,
