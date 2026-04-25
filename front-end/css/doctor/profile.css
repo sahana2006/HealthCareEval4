@@ -15,49 +15,32 @@
 }
 
 .profile-avatar-lg {
-  width: 76px;
-  height: 76px;
+  width: 76px; height: 76px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  font-family: "Sora", sans-serif;
-  font-size: 1.6rem;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  font-family: 'Sora', sans-serif;
+  font-size: 1.6rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid rgba(255,255,255,.25);
   flex-shrink: 0;
 }
 
-.profile-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+.profile-meta { display: flex; flex-direction: column; gap: 4px; }
 .profile-name {
-  font-family: "Sora", sans-serif;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-family: 'Sora', sans-serif;
+  font-size: 1.25rem; font-weight: 700;
 }
-.profile-role {
-  font-size: 0.85rem;
-  opacity: 0.75;
-}
-.profile-id {
-  font-size: 0.78rem;
-  opacity: 0.55;
-  font-weight: 600;
-  margin-top: 4px;
-}
+.profile-role { font-size: .85rem; opacity: .75; }
+.profile-id   { font-size: .78rem; opacity: .55; font-weight: 600; margin-top: 4px; }
 
 .btn-edit-white {
-  border-color: rgba(255, 255, 255, 0.35) !important;
+  border-color: rgba(255,255,255,.35) !important;
   color: #fff !important;
-  background: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255,255,255,.1) !important;
 }
 .btn-edit-white:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255,255,255,.2) !important;
   border-color: #fff !important;
 }
 
@@ -67,24 +50,18 @@
 }
 .change-photo-btn {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 28px;
-  height: 28px;
+  bottom: 0; right: 0;
+  width: 28px; height: 28px;
   border-radius: 50%;
   background: var(--accent);
   color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
   border: 2px solid var(--white);
   box-shadow: var(--shadow);
   transition: var(--transition);
 }
-.change-photo-btn:hover {
-  background: var(--accent-dark);
-}
+.change-photo-btn:hover { background: var(--accent-dark); }
 
 .profile-edit-actions {
   display: flex;
@@ -110,19 +87,19 @@
 }
 
 .performance-label {
-  font-size: 0.82rem;
+  font-size: .82rem;
   font-weight: 600;
   color: var(--text-muted);
 }
 
 .performance-value {
-  font-family: "Sora", sans-serif;
+  font-family: 'Sora', sans-serif;
   font-size: 1.4rem;
   color: var(--accent);
 }
 
 .performance-note {
-  font-size: 0.78rem;
+  font-size: .78rem;
   color: var(--text-muted);
   line-height: 1.4;
 }
@@ -146,11 +123,6 @@
 }
 
 @media (max-width: 600px) {
-  .profile-header-card {
-    flex-direction: column;
-    text-align: center;
-  }
-  .profile-header-card > div:last-child {
-    margin-left: 0;
-  }
+  .profile-header-card { flex-direction: column; text-align: center; }
+  .profile-header-card > div:last-child { margin-left: 0; }
 }
