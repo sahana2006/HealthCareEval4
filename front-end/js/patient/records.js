@@ -1,12 +1,52 @@
 const MEDICAL_RECORDS_API_BASE_URL = 'http://localhost:3000';
 
 let medicalRecords = [];
+let medicalRecordsRefreshTimer = null;
 
 function useTemplate(id) {
   return document.getElementById(id).content.cloneNode(true);
 }
 
 async function initializeMedicalRecordsPage() {
+  const session = requireRole('patient');
+  if (!session) return;
+
+  const response = await fetch(
+    `${MEDICAL_RECORDS_API_BASE_URL}/medical-records/${encodeURIComponent(session.id)}`,
+    {
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load medical records');
+  }
+
+  medicalRecords = await response.json();
+  renderMedicalRecords();
+  startMedicalRecordsRefresh();
+}
+
+function startMedicalRecordsRefresh() {
+  if (medicalRecordsRefreshTimer) return;
+
+  medicalRecordsRefreshTimer = window.setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      await refreshMedicalRecords();
+    } catch (_) {}
+  }, 5000);
+
+  window.addEventListener('focus', async () => {
+    try {
+      await refreshMedicalRecords();
+    } catch (_) {}
+  });
+}
+
+async function refreshMedicalRecords() {
   const session = requireRole('patient');
   if (!session) return;
 

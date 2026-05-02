@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
@@ -10,6 +11,7 @@ import { MedicinesModule } from './medicines/medicines.module';
 import { OrdersModule } from './orders/orders.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -24,6 +26,12 @@ import { UsersModule } from './users/users.module';
     FeedbackModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
 import { DoctorsService } from './doctors.service';
 
@@ -9,16 +10,19 @@ export class DoctorsController {
     private readonly appointmentsService: AppointmentsService,
   ) {}
 
+  @Roles('patient', 'doctor', 'frontdesk')
   @Get()
   listDoctors(@Query('specialization') specialization?: string) {
     return this.doctorsService.findAll(specialization);
   }
 
+  @Roles('patient', 'doctor', 'frontdesk')
   @Get(':doctorId')
   getDoctorProfile(@Param('doctorId') doctorId: string) {
     return this.doctorsService.getDoctorById(doctorId);
   }
 
+  @Roles('patient', 'doctor', 'frontdesk')
   @Get(':doctorId/slots')
   getAvailableSlots(
     @Param('doctorId') doctorId: string,
@@ -32,6 +36,7 @@ export class DoctorsController {
     return this.appointmentsService.getAvailableSlots(doctorId, date.trim());
   }
 
+  @Roles('doctor', 'frontdesk')
   @Get(':doctorId/appointments')
   getAppointmentsByDoctorId(
     @Param('doctorId') doctorId: string,

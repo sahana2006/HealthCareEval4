@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { DoctorsService } from '../doctors/doctors.service';
+import { PatientsService } from '../patients/patients.service';
 
 export type AppointmentStatus = 'upcoming' | 'completed';
 
@@ -24,9 +27,17 @@ export type UpdateAppointmentInput = {
   slot?: string;
 };
 
+const APPOINTMENTS_DATA_FILE = join(
+  __dirname,
+  '..',
+  '..',
+  'data',
+  'appointments.json',
+);
+
 @Injectable()
 export class AppointmentsService {
-  private readonly appointments: Appointment[] = [
+  private appointments: Appointment[] = [
     {
       id: 'APT001',
       userId: 'PAT001',
@@ -53,7 +64,12 @@ export class AppointmentsService {
     },
   ];
 
-  constructor(private readonly doctorsService: DoctorsService) {}
+  constructor(
+    private readonly doctorsService: DoctorsService,
+    private readonly patientsService: PatientsService,
+  ) {
+    this.loadPersistedAppointments();
+  }
 
   getAvailableSlots(doctorId: string, date: string): string[] {
     const doctor = this.doctorsService.getDoctorById(doctorId);
@@ -101,6 +117,7 @@ export class AppointmentsService {
     };
 
     this.appointments.unshift(appointment);
+    this.persistAppointments();
     return this.toAppointmentDetails(appointment);
   }
 
@@ -143,6 +160,17 @@ export class AppointmentsService {
     );
   }
 
+  completeAppointment(appointmentId: string) {
+    const appointment = this.appointments.find((item) => item.id === appointmentId);
+    if (!appointment) {
+      throw new BadRequestException('Appointment not found');
+    }
+
+    appointment.status = 'completed';
+    this.persistAppointments();
+    return this.toAppointmentDetails(appointment);
+  }
+
   updateAppointment(appointmentId: string, input: UpdateAppointmentInput) {
     const appointment = this.appointments.find((item) => item.id === appointmentId);
     if (!appointment) {
@@ -177,6 +205,7 @@ export class AppointmentsService {
 
     appointment.date = nextDate;
     appointment.slot = nextSlot;
+    this.persistAppointments();
 
     return this.toAppointmentDetails(appointment);
   }
@@ -195,15 +224,58 @@ export class AppointmentsService {
     }
 
     const [cancelledAppointment] = this.appointments.splice(appointmentIndex, 1);
+    this.persistAppointments();
     return this.toAppointmentDetails(cancelledAppointment);
+  }
+
+  private loadPersistedAppointments() {
+    try {
+      if (!existsSync(APPOINTMENTS_DATA_FILE)) {
+        return;
+      }
+
+      const saved = JSON.parse(readFileSync(APPOINTMENTS_DATA_FILE, 'utf8'));
+      if (Array.isArray(saved)) {
+        this.appointments = saved;
+      }
+    } catch (_) {}
+  }
+
+  private persistAppointments() {
+    mkdirSync(dirname(APPOINTMENTS_DATA_FILE), { recursive: true });
+    writeFileSync(
+      APPOINTMENTS_DATA_FILE,
+      JSON.stringify(this.appointments, null, 2),
+    );
   }
 
   private toAppointmentDetails(appointment: Appointment) {
     const doctor = this.doctorsService.getDoctorById(appointment.doctorId);
+    let patient: Record<string, string> | null = null;
+
+    try {
+      const patientProfile = this.patientsService.getPatientByUserId(appointment.userId);
+      patient = {
+        userId: patientProfile.userId,
+        firstName: patientProfile.firstName,
+        lastName: patientProfile.lastName,
+        name: `${patientProfile.firstName} ${patientProfile.lastName}`.trim(),
+        gender: patientProfile.gender,
+        dob: patientProfile.dob,
+        phone: patientProfile.phone,
+        email: patientProfile.email,
+      };
+    } catch (_) {
+      patient = {
+        userId: appointment.userId,
+        name: appointment.userId,
+      };
+    }
 
     return {
       ...appointment,
       doctor,
+      patient,
     };
   }
 }

@@ -133,7 +133,7 @@
 
         await fetch(`${API_BASE}/medical-records`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', role: 'doctor' },
           body: JSON.stringify({
             doctorId,
             patientId,

@@ -13,7 +13,7 @@ const DOCTOR_API_BASE = 'http://localhost:3000';
   let doctorId = 'DOC003';
   try {
     const session = JSON.parse(localStorage.getItem('user') || '{}');
-    if (session && session.doctorId) doctorId = session.doctorId;
+    if (session && (session.doctorId || session.id)) doctorId = session.doctorId || session.id;
   } catch (_) {}
 
   await loadDashboardAppointments(doctorId);
@@ -26,6 +26,11 @@ async function loadDashboardAppointments(doctorId) {
   try {
     const response = await fetch(
       `${DOCTOR_API_BASE}/doctors/${encodeURIComponent(doctorId)}/appointments`,
+      {
+        headers: {
+          role: 'doctor',
+        },
+      }
     );
 
     if (!response.ok) throw new Error('Failed to load appointments');
@@ -54,8 +59,8 @@ async function loadDashboardAppointments(doctorId) {
     appointmentsContainer.innerHTML = '';
     // Show at most 5 on dashboard
     appointments.slice(0, 5).forEach((appt) => {
-      const patient = appt.doctor ? null : appt; // patient info is in userId
-      const initials = getInitials(appt.userId || 'Patient');
+      const patientName = appt.patient?.name || appt.userId || 'Patient';
+      const initials = getInitials(patientName);
       const statusClass = appt.status === 'upcoming' ? 'badge-confirm-outline' : 'badge-completed';
       const statusLabel = appt.status === 'upcoming' ? 'Upcoming' : 'Completed';
 
@@ -65,7 +70,7 @@ async function loadDashboardAppointments(doctorId) {
         <div class="patient-left">
           <div class="avatar">${initials}</div>
           <div>
-            <div class="patient-name">${appt.userId}</div>
+            <div class="patient-name">${patientName}</div>
             <div class="patient-meta">${appt.date} &middot; ${appt.slot}</div>
           </div>
         </div>

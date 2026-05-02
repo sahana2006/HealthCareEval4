@@ -8,6 +8,7 @@ import {
   Put,
   Query,
 } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
 import {
   AppointmentsService,
   CreateAppointmentInput,
@@ -18,6 +19,7 @@ import {
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
+  @Roles('patient', 'frontdesk')
   @Post()
   createAppointment(@Body() body: Partial<CreateAppointmentInput>) {
     return this.appointmentsService.createAppointment({
@@ -28,6 +30,7 @@ export class AppointmentsController {
     });
   }
 
+  @Roles('patient', 'frontdesk')
   @Get('user/:userId')
   getAppointmentsByUserId(
     @Param('userId') userId: string,
@@ -36,16 +39,19 @@ export class AppointmentsController {
     return this.appointmentsService.getAppointmentsByUserId(userId, status);
   }
 
+  @Roles('patient', 'frontdesk')
   @Get('completed/:userId')
   getCompletedAppointmentsByUserId(@Param('userId') userId: string) {
     return this.appointmentsService.getCompletedAppointmentsByUserId(userId);
   }
 
+  @Roles('doctor', 'frontdesk')
   @Get('doctor/:doctorId')
   getAppointmentsByDoctorId(@Param('doctorId') doctorId: string) {
     return this.appointmentsService.getAppointmentsByDoctorId(doctorId);
   }
 
+  @Roles('patient', 'frontdesk')
   @Put(':id')
   updateAppointment(
     @Param('id') id: string,
@@ -57,6 +63,7 @@ export class AppointmentsController {
     });
   }
 
+  @Roles('patient', 'doctor', 'frontdesk')
   @Delete(':id')
   cancelAppointment(@Param('id') id: string) {
     return this.appointmentsService.cancelAppointment(id);
