@@ -14,6 +14,11 @@ export class DoctorsController {
     return this.doctorsService.findAll(specialization);
   }
 
+  @Get(':doctorId')
+  getDoctorProfile(@Param('doctorId') doctorId: string) {
+    return this.doctorsService.getDoctorById(doctorId);
+  }
+
   @Get(':doctorId/slots')
   getAvailableSlots(
     @Param('doctorId') doctorId: string,
@@ -25,5 +30,19 @@ export class DoctorsController {
     }
 
     return this.appointmentsService.getAvailableSlots(doctorId, date.trim());
+  }
+
+  @Get(':doctorId/appointments')
+  getAppointmentsByDoctorId(
+    @Param('doctorId') doctorId: string,
+    @Query('status') status?: string,
+  ) {
+    // Validate doctorId exists first
+    this.doctorsService.getDoctorById(doctorId);
+    const appointments = this.appointmentsService.getAppointmentsByDoctorId(doctorId);
+    if (status === 'upcoming' || status === 'completed') {
+      return appointments.filter((a) => a.status === status);
+    }
+    return appointments;
   }
 }

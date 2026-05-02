@@ -70,7 +70,7 @@ function buildRecordCard(record) {
   card.id = `rcard-${record.id}`;
   card.querySelector('.rec-title').textContent = `Record ${record.id}`;
   card.querySelector('.rec-meta-doc').textContent =
-    `${record.doctorName} - ${record.specialization}`;
+    `${record.doctorName} - ${record.specialization}${record.date ? ' · ' + formatDate(record.date) : ''}`;
 
   badge.textContent = formatRecordType(record.type);
   badge.classList.add(record.type === 'consultation' ? 'badge-teal' : 'badge-orange');
@@ -82,7 +82,15 @@ function buildRecordCard(record) {
     followUpText.textContent = `Follow-Up: ${record.followUp ? formatDate(record.followUp) : 'N/A'}`;
     followUpText.style.display = 'block';
   } else if (record.type === 'treatment') {
-    primaryText.textContent = 'Treatment record available from the assigned doctor.';
+    const details = [];
+    if (record.medicines) details.push(`Medicines: ${record.medicines}`);
+    if (record.tests) details.push(`Tests: ${record.tests}`);
+    if (record.lifestyle) details.push(`Lifestyle: ${record.lifestyle}`);
+    if (record.diet) details.push(`Diet: ${record.diet}`);
+    if (record.duration) details.push(`Duration: ${record.duration}`);
+    primaryText.textContent = details.length
+      ? details.join(' | ')
+      : 'Treatment plan details from the assigned doctor.';
   } else {
     primaryText.textContent = 'Lab record available from the assigned doctor.';
   }

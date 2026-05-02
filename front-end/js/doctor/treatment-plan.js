@@ -2,6 +2,8 @@
 (async () => {
   await loadComponents('treatment-plan', 'Treatment Plan');
 
+  const API_BASE = 'http://localhost:3000';
+
   const patientSelect = document.getElementById('patientSelect');
   const savePlanBtn = document.getElementById('savePlanBtn');
   const viewHistoryBtn = document.getElementById('viewHistoryBtn');
@@ -94,7 +96,7 @@
     });
   }
 
-  savePlanBtn.addEventListener('click', () => {
+  savePlanBtn.addEventListener('click', async () => {
     clearFormError();
     clearFieldErrors();
 
@@ -116,6 +118,40 @@
     try {
       savePlan(patientId, plan);
       clearFormFields();
+
+      // ── Persist to backend so it shows in patient records ──
+      try {
+        let doctorId = 'DOC003';
+        let doctorName = 'Dr. Sarah Johnson';
+        let specialization = 'General';
+        try {
+          const session = JSON.parse(localStorage.getItem('user') || '{}');
+          if (session.doctorId) doctorId = session.doctorId;
+          if (session.doctorName) doctorName = session.doctorName;
+          if (session.specialization) specialization = session.specialization;
+        } catch (_) {}
+
+        await fetch(`${API_BASE}/medical-records`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doctorId,
+            patientId,
+            type: 'treatment',
+            doctorName,
+            specialization,
+            date: new Date().toISOString().split('T')[0],
+            medicines: plan.medicines,
+            tests: plan.tests,
+            lifestyle: plan.lifestyle,
+            diet: plan.diet,
+            duration: plan.duration,
+          }),
+        });
+      } catch (_) {
+        // Backend may not be running; local save already succeeded
+      }
+
       showToast('Treatment plan saved successfully!', 'success');
     } catch (error) {
       showFormError(error.message);
