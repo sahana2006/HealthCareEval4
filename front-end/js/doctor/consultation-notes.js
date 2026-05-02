@@ -1,6 +1,8 @@
 (async () => {
   await loadComponents('consultation-notes', 'Consultation Notes');
 
+  const API_BASE = 'http://localhost:3000';
+
   const listView = document.getElementById('listView');
   const noteDetailView = document.getElementById('noteDetailView');
   const searchInput = document.getElementById('searchInput');
@@ -170,7 +172,7 @@
   document.getElementById('backBtn').addEventListener('click', showList);
   document.getElementById('cancelNoteBtn').addEventListener('click', showList);
 
-  document.getElementById('saveNoteBtn').addEventListener('click', () => {
+  document.getElementById('saveNoteBtn').addEventListener('click', async () => {
     const dateVal = document.getElementById('noteDate').value;
     const notesText = document.getElementById('noteText').value;
     const meds = [...document.querySelectorAll('#medicineList .prescription-item span')].map(s => s.textContent).join('|');
@@ -189,6 +191,38 @@
       displayDate: dateVal ? new Date(dateVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
     };
     saveNote(note);
+
+    // ── Persist to backend so it shows in patient records ──
+    try {
+      let doctorId = 'DOC003';
+      let doctorName = 'Dr. Sarah Johnson';
+      let specialization = 'General';
+      try {
+        const session = JSON.parse(localStorage.getItem('user') || '{}');
+        if (session.doctorId) doctorId = session.doctorId;
+        if (session.doctorName) doctorName = session.doctorName;
+        if (session.specialization) specialization = session.specialization;
+      } catch (_) {}
+
+      await fetch(`${API_BASE}/medical-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          doctorId,
+          patientId: currentPatient?.id || note.id,
+          type: 'consultation',
+          doctorName,
+          specialization,
+          date: dateVal || new Date().toISOString().split('T')[0],
+          consultationNote: notesText,
+          medicines: meds.replace(/\|/g, ', '),
+          followUp: document.getElementById('followUpDate')?.value || '',
+        }),
+      });
+    } catch (_) {
+      // Backend may not be running; local save already succeeded
+    }
+
     showToast('Consultation note saved!', 'success');
     showList();
   });
