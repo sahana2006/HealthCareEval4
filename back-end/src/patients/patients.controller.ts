@@ -1,12 +1,11 @@
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
-  Headers,
   Param,
   Put,
 } from '@nestjs/common';
+import { Roles } from '../common/decorators/roles.decorator';
 import {
   PatientsService,
   UpdatePatientProfileInput,
@@ -16,23 +15,18 @@ import {
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  @Roles('patient', 'doctor', 'frontdesk')
   @Get(':userId')
-  getPatientProfile(
-    @Param('userId') userId: string,
-    @Headers('role') role?: string,
-  ) {
-    this.assertPatientRole(role);
+  getPatientProfile(@Param('userId') userId: string) {
     return this.patientsService.getPatientByUserId(userId);
   }
 
+  @Roles('patient', 'frontdesk')
   @Put(':userId')
   updatePatientProfile(
     @Param('userId') userId: string,
-    @Headers('role') role: string | undefined,
     @Body() body: Partial<UpdatePatientProfileInput>,
   ) {
-    this.assertPatientRole(role);
-
     return this.patientsService.updatePatientByUserId(userId, {
       firstName: body.firstName?.trim() ?? '',
       lastName: body.lastName?.trim() ?? '',
@@ -43,11 +37,5 @@ export class PatientsController {
       email: body.email?.trim() ?? '',
       guardianName: body.guardianName?.trim() ?? '',
     });
-  }
-
-  private assertPatientRole(role?: string) {
-    if (role !== 'patient') {
-      throw new ForbiddenException('Patient role header is required');
-    }
   }
 }

@@ -1,0 +1,65 @@
+[
+  {
+    "id": "MR1777753031750",
+    "doctorId": "DOC003",
+    "patientId": "PAT-002",
+    "type": "treatment",
+    "doctorName": "Dr. Sarah Johnson",
+    "specialization": "General",
+    "date": "2026-05-02",
+    "medicines": "egr",
+    "tests": "eeggr",
+    "lifestyle": "erger",
+    "diet": "fghtr",
+    "duration": "fght"
+  },
+  {
+    "id": "MR1777751076661",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "consultation",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "General",
+    "date": "2026-05-02",
+    "consultationNote": "fuvv",
+    "medicines": "oho",
+    "followUp": "",
+    "appointmentId": "APT1777750981092",
+    "tests": "ougu"
+  },
+  {
+    "id": "MR001",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "consultation",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "Dermatologist",
+    "date": "2026-03-10",
+    "consultationNote": "Reviewed recurring skin irritation and advised trigger avoidance plus hydration.",
+    "medicines": "Cetirizine 10mg once daily, Calamine lotion twice daily",
+    "followUp": "2026-05-10"
+  },
+  {
+    "id": "MR002",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "treatment",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "Dermatologist",
+    "date": "2026-03-10",
+    "medicines": "Cetirizine 10mg, Calamine lotion",
+    "tests": "Patch test",
+    "lifestyle": "Avoid harsh soaps and synthetic fabrics",
+    "diet": "Increase omega-3 rich foods",
+    "duration": "4 weeks"
+  },
+  {
+    "id": "MR003",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "lab",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "Dermatologist",
+    "date": "2026-03-10"
+  }
+]

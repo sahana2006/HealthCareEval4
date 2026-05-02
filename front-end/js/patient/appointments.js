@@ -9,6 +9,7 @@ let selectedDoctor = null;
 let selectedSlot = null;
 let editingAppointment = null;
 let editingAppointmentId = null;
+let appointmentRefreshTimer = null;
 
 function useTemplate(id) {
   return document.getElementById(id).content.cloneNode(true);
@@ -18,6 +19,26 @@ async function initializeAppointmentsPage() {
   await Promise.all([loadAllDoctors(), loadUserAppointments()]);
   doctors = allDoctors;
   renderAppointments();
+  startAppointmentStatusRefresh();
+}
+
+function startAppointmentStatusRefresh() {
+  if (appointmentRefreshTimer) return;
+
+  appointmentRefreshTimer = window.setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      await loadUserAppointments();
+      refreshApptLists();
+    } catch (_) {}
+  }, 5000);
+
+  window.addEventListener('focus', async () => {
+    try {
+      await loadUserAppointments();
+      refreshApptLists();
+    } catch (_) {}
+  });
 }
 
 async function loadAllDoctors() {

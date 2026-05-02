@@ -6,39 +6,167 @@
   const listView = document.getElementById('listView');
   const noteDetailView = document.getElementById('noteDetailView');
   const searchInput = document.getElementById('searchInput');
-  const patientSearchResults = document.getElementById('patientSearchResults');
-  const selectedPatientChip = document.getElementById('selectedPatientChip');
+  const appointmentSearchResults = document.getElementById('patientSearchResults');
+  const recordsList = document.getElementById('recordsList');
+  const recordsModal = document.getElementById('recordsModal');
+  const allRecordsList = document.getElementById('allRecordsList');
 
-  const PATIENTS = [
-    { id: 'PAT-001', name: 'Alisha Verma', age: '32', gender: 'Female', initials: 'AV' },
-    { id: 'PAT-002', name: 'Neil Verma', age: '45', gender: 'Male', initials: 'NV' },
-    { id: 'PAT-003', name: 'Dev Patel', age: '36', gender: 'Male', initials: 'DP' },
-    { id: 'PAT-004', name: 'Ria Sharma', age: '19', gender: 'Female', initials: 'RS' }
+  const PATIENTS = {
+    PAT001: { id: 'PAT001', name: 'Ria Sharma', age: '19', gender: 'Female', initials: 'RS' },
+    'PAT-001': { id: 'PAT-001', name: 'Alisha Verma', age: '32', gender: 'Female', initials: 'AV' },
+    'PAT-002': { id: 'PAT-002', name: 'Neil Verma', age: '45', gender: 'Male', initials: 'NV' },
+    'PAT-003': { id: 'PAT-003', name: 'Dev Patel', age: '36', gender: 'Male', initials: 'DP' },
+    'PAT-004': { id: 'PAT-004', name: 'Ria Sharma', age: '19', gender: 'Female', initials: 'RS' },
+  };
+
+  const FALLBACK_APPOINTMENTS = [
+    { id: 'APT101', userId: 'PAT-002', date: '2026-03-05', slot: '10:00', status: 'completed' },
+    { id: 'APT102', userId: 'PAT-003', date: '2026-03-05', slot: '11:00', status: 'completed' },
+    { id: 'APT103', userId: 'PAT-004', date: '2026-03-05', slot: '12:00', status: 'completed' },
   ];
 
-  let selectedPatient = null;
-  let currentPatient = null;
+  let appointments = [];
+  let doctorAppointments = [];
+  let selectedAppointment = null;
+  let currentRecord = null;
 
-  function getSavedNotes() {
-    return JSON.parse(localStorage.getItem('consultationNotes') || '[]');
+  const DEMO_CONSULTATION_RECORDS = [
+    {
+      id: 'REC001',
+      appointmentId: 'APT101',
+      patientId: 'PAT-002',
+      name: 'Neil Verma',
+      age: '45',
+      gender: 'Male',
+      initials: 'NV',
+      notes: 'Patient presented with high blood pressure and dizziness. Prescribed medication.',
+      meds: 'Lisinopril 10 mg - Take once daily|Hydrochlorthiazide 25 mg - Take once daily',
+      labs: 'Blood Test',
+      date: '2026-03-05',
+      slot: '10:00',
+    },
+    {
+      id: 'REC002',
+      appointmentId: 'APT102',
+      patientId: 'PAT-003',
+      name: 'Dev Patel',
+      age: '36',
+      gender: 'Male',
+      initials: 'DP',
+      notes: 'Chest pain check-up.',
+      meds: 'Aspirin 75 mg - Take once daily',
+      labs: 'ECG|Blood Test',
+      date: '2026-03-05',
+      slot: '11:00',
+    },
+    {
+      id: 'REC003',
+      appointmentId: 'APT103',
+      patientId: 'PAT-004',
+      name: 'Ria Sharma',
+      age: '19',
+      gender: 'Female',
+      initials: 'RS',
+      notes: 'Knee pain and started therapy.',
+      meds: 'Ibuprofen 400 mg - Twice daily',
+      labs: 'X-Ray',
+      date: '2026-03-05',
+      slot: '12:00',
+    },
+  ];
+
+  let consultationRecords = [...DEMO_CONSULTATION_RECORDS];
+
+  function getDoctorSession() {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (_) {
+      return {};
+    }
   }
 
-  function saveNote(note) {
-    const notes = getSavedNotes();
-    const idx = notes.findIndex(n => n.id === note.id);
-    if (idx > -1) notes[idx] = note; else notes.unshift(note);
-    localStorage.setItem('consultationNotes', JSON.stringify(notes));
+  function getDoctorId() {
+    const session = getDoctorSession();
+    return session.doctorId || session.id || 'DOC003';
   }
 
-  function toInputDate(ddmmyyyy) {
-    const [d, m, y] = (ddmmyyyy || '').split('/');
-    return y && m && d ? `${y}-${m}-${d}` : '';
+  function getPatient(appointment) {
+    if (appointment.patient) {
+      const patientName = appointment.patient.name || `${appointment.patient.firstName || ''} ${appointment.patient.lastName || ''}`.trim();
+      return {
+        id: appointment.patient.userId || appointment.userId,
+        name: patientName || appointment.userId,
+        age: appointment.patient.age || '',
+        gender: appointment.patient.gender || '',
+        initials: getInitials(patientName || appointment.userId),
+      };
+    }
+
+    const fallbackId = appointment.userId || appointment.patientId || 'PATIENT';
+    return PATIENTS[fallbackId] || {
+      id: fallbackId,
+      name: fallbackId,
+      age: '',
+      gender: '',
+      initials: getInitials(fallbackId),
+    };
   }
 
-  function fromInputDate(yyyymmdd) {
-    if (!yyyymmdd) return '';
-    const [y, m, d] = yyyymmdd.split('-');
-    return `${d}/${m}/${y}`;
+  function getInitials(str) {
+    return String(str || '?')
+      .split(/[\s-]+/)
+      .map((part) => part[0]?.toUpperCase() || '')
+      .slice(0, 2)
+      .join('');
+  }
+
+  function formatDisplayDate(dateValue) {
+    if (!dateValue) return '';
+    const date = new Date(`${dateValue}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return dateValue;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function toPipeList(value) {
+    if (!value) return '';
+    const text = String(value);
+    const separator = text.includes('|') ? '|' : ',';
+    return text
+      .split(separator)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .join('|');
+  }
+
+  function getAppointmentById(appointmentId) {
+    return doctorAppointments.find((appointment) => appointment.id === appointmentId) || null;
+  }
+
+  function normalizeMedicalRecord(record) {
+    const appointment = getAppointmentById(record.appointmentId);
+    const patient = appointment ? getPatient(appointment) : PATIENTS[record.patientId] || {
+      id: record.patientId || 'PATIENT',
+      name: record.patientId || 'Patient',
+      age: '',
+      gender: '',
+      initials: getInitials(record.patientId || 'Patient'),
+    };
+
+    return {
+      id: record.id,
+      appointmentId: record.appointmentId || '',
+      patientId: record.patientId,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      initials: patient.initials || getInitials(patient.name),
+      notes: record.consultationNote || '',
+      meds: toPipeList(record.medicines),
+      labs: toPipeList(record.tests),
+      date: record.date || appointment?.date || '',
+      slot: appointment?.slot || '',
+      followUp: record.followUp || '',
+    };
   }
 
   function addPrescriptionItem(container, text) {
@@ -49,90 +177,108 @@
     container.appendChild(div);
   }
 
-  function renderSavedNotes() {
-    const saved = getSavedNotes();
-    const container = document.getElementById('savedNotesList');
-    const savedCard = document.getElementById('savedNotesCard');
-    container.innerHTML = '';
-    savedCard.style.display = saved.length > 0 ? '' : 'none';
-
-    saved.forEach(note => {
-      const row = document.createElement('div');
-      row.className = 'patient-row';
-      row.dataset.patient = note.name;
-      row.dataset.patientId = note.id;
-      const initials = note.initials || note.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-      row.innerHTML = `
-        <div class="patient-left">
-          <div class="avatar" style="background:var(--accent);">${initials}</div>
-          <div>
-            <div class="patient-name">${note.name} <span class="meta-inline">${note.age || ''} | ${note.gender || ''}</span></div>
-            <div class="patient-meta">${note.notes ? note.notes.slice(0, 80) + (note.notes.length > 80 ? '...' : '') : ''}</div>
-          </div>
-        </div>
-        <div class="patient-right">
-          <span class="date-label">${note.displayDate || ''}</span>
-          <button class="btn-view saved-view-btn" data-id="${note.id}">View</button>
-        </div>`;
-      row.querySelector('.saved-view-btn').addEventListener('click', () => showDetail({ ...note, date: note.rawDate }));
-      container.appendChild(row);
-    });
+  async function loadAppointments() {
+    try {
+      const response = await fetch(`${API_BASE}/doctors/${encodeURIComponent(getDoctorId())}/appointments`, {
+        headers: { role: 'doctor' },
+      });
+      if (!response.ok) throw new Error('Unable to load appointments');
+      const data = await response.json();
+      doctorAppointments = data;
+      const upcomingAppointments = data.filter((appointment) => appointment.status === 'upcoming');
+      appointments = data.length ? upcomingAppointments : FALLBACK_APPOINTMENTS;
+    } catch (_) {
+      doctorAppointments = FALLBACK_APPOINTMENTS;
+      appointments = FALLBACK_APPOINTMENTS;
+    }
   }
 
-  function setSelectedPatient(patient) {
-    selectedPatient = patient;
-    searchInput.value = patient ? `${patient.id} - ${patient.name}` : '';
-    selectedPatientChip.textContent = patient ? `${patient.id} - ${patient.name}` : 'No patient selected';
-    document.querySelectorAll('#recordsList .patient-row').forEach(row => {
-      row.classList.toggle('is-selected', patient && row.dataset.patientId === patient.id);
-    });
-    patientSearchResults.classList.remove('open');
+  async function loadConsultationRecords() {
+    try {
+      const response = await fetch(`${API_BASE}/medical-records/doctor/${encodeURIComponent(getDoctorId())}`, {
+        headers: { role: 'doctor' },
+      });
+      if (!response.ok) throw new Error('Unable to load consultation records');
+      const records = await response.json();
+      const consultationOnly = records
+        .filter((record) => record.type === 'consultation')
+        .map(normalizeMedicalRecord);
+      consultationRecords = consultationOnly.length ? consultationOnly : [...DEMO_CONSULTATION_RECORDS];
+    } catch (_) {
+      consultationRecords = [...DEMO_CONSULTATION_RECORDS];
+    }
   }
 
-  function renderPatientSearch(query = '') {
+  function renderAppointmentSearch(query = '') {
     const normalized = query.trim().toLowerCase();
-    const matches = PATIENTS.filter(patient => (`${patient.id} ${patient.name}`).toLowerCase().includes(normalized));
-    patientSearchResults.innerHTML = '';
+    appointmentSearchResults.innerHTML = '';
 
     if (!normalized) {
-      patientSearchResults.classList.remove('open');
+      appointmentSearchResults.classList.remove('open');
       return;
     }
+
+    const matches = appointments.filter((appointment) => {
+      const patient = getPatient(appointment);
+      return `${appointment.id} ${patient.id} ${patient.name} ${appointment.date} ${appointment.slot}`
+        .toLowerCase()
+        .includes(normalized);
+    });
 
     if (!matches.length) {
-      patientSearchResults.innerHTML = '<button type="button" class="patient-search-option empty" disabled>No matching patient found</button>';
-      patientSearchResults.classList.add('open');
+      appointmentSearchResults.innerHTML = '<button type="button" class="patient-search-option empty" disabled>No matching appointment found</button>';
+      appointmentSearchResults.classList.add('open');
       return;
     }
 
-    matches.forEach(patient => {
+    matches.forEach((appointment) => {
+      const patient = getPatient(appointment);
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'patient-search-option';
-      btn.innerHTML = `<strong>${patient.id}</strong><span>${patient.name}</span>`;
-      btn.addEventListener('click', () => setSelectedPatient(patient));
-      patientSearchResults.appendChild(btn);
+      btn.innerHTML = `
+        <span><strong>${patient.name}</strong><small>${appointment.id} | ${formatDisplayDate(appointment.date)} | ${appointment.slot}</small></span>
+        <span>${appointment.status || 'scheduled'}</span>`;
+      btn.addEventListener('click', () => selectAppointment(appointment));
+      appointmentSearchResults.appendChild(btn);
     });
-    patientSearchResults.classList.add('open');
+
+    appointmentSearchResults.classList.add('open');
   }
 
-  function showDetail(data) {
-    currentPatient = data;
-    document.getElementById('detailAvatar').textContent = data.initials || (data.name ? data.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?');
-    document.getElementById('detailName').textContent = data.name || 'New Patient';
-    document.getElementById('detailMeta').textContent = (data.age && data.gender) ? `${data.age} | ${data.gender}` : '';
-    document.getElementById('noteDate').value = data.date ? toInputDate(data.date) : '';
-    document.getElementById('noteText').value = data.notes || '';
-    document.getElementById('followUpDate').value = '';
+  function selectAppointment(appointment) {
+    selectedAppointment = appointment;
+    const patient = getPatient(appointment);
+    searchInput.value = `${appointment.id} - ${patient.name} - ${formatDisplayDate(appointment.date)} ${appointment.slot}`;
+    appointmentSearchResults.classList.remove('open');
+  }
+
+  function setDetailData(record) {
+    currentRecord = record;
+    document.getElementById('detailAvatar').textContent = record.initials || getInitials(record.name);
+    document.getElementById('detailName').textContent = record.name || 'Patient';
+    document.getElementById('detailMeta').textContent = [
+      record.age && record.gender ? `${record.age} | ${record.gender}` : '',
+      record.appointmentId ? `Appointment ${record.appointmentId}` : '',
+      record.slot ? `Slot ${record.slot}` : '',
+    ].filter(Boolean).join(' - ');
+    document.getElementById('noteDate').value = record.date || '';
+    document.getElementById('noteText').value = record.notes || '';
+    document.getElementById('followUpDate').value = record.followUp || '';
 
     const medList = document.getElementById('medicineList');
     medList.innerHTML = '';
-    (data.meds || '').split('|').filter(Boolean).forEach(m => addPrescriptionItem(medList, m));
+    (record.meds || '').split('|').filter(Boolean).forEach((medicine) => addPrescriptionItem(medList, medicine));
 
     const labList = document.getElementById('labList');
     labList.innerHTML = '';
-    (data.labs || '').split('|').filter(Boolean).forEach(l => addPrescriptionItem(labList, l));
+    (record.labs || '').split('|').filter(Boolean).forEach((lab) => addPrescriptionItem(labList, lab));
+  }
 
+  function showDetail(record, readOnly = false) {
+    setDetailData(record);
+    document.getElementById('saveNoteBtn').style.display = readOnly ? 'none' : '';
+    document.getElementById('cancelNoteBtn').textContent = readOnly ? 'Close' : 'Cancel';
     listView.style.display = 'none';
     noteDetailView.style.display = 'block';
   }
@@ -140,32 +286,85 @@
   function showList() {
     noteDetailView.style.display = 'none';
     listView.style.display = 'block';
-    renderSavedNotes();
+    document.getElementById('saveNoteBtn').style.display = '';
+    document.getElementById('cancelNoteBtn').textContent = 'Cancel';
+    renderRecords();
   }
 
-  document.querySelectorAll('#recordsList .view-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const patient = PATIENTS.find(item => item.id === btn.dataset.id);
-      if (patient) setSelectedPatient(patient);
-      showDetail(btn.dataset);
+  function buildRecordRow(record) {
+    const row = document.createElement('div');
+    row.className = 'patient-row';
+    row.dataset.patient = record.name;
+    row.dataset.patientId = record.patientId;
+    row.innerHTML = `
+      <div class="patient-left">
+        <div class="avatar" style="background:var(--accent);">${record.initials || getInitials(record.name)}</div>
+        <div>
+          <div class="patient-name">${record.name} <span class="meta-inline">${[record.age, record.gender].filter(Boolean).join(' | ')}</span></div>
+          <div class="patient-meta">${record.notes || 'No consultation notes entered yet.'}</div>
+        </div>
+      </div>
+      <div class="patient-right">
+        <span class="date-label">${formatDisplayDate(record.date)}</span>
+        <button class="btn-view view-btn" type="button">View</button>
+      </div>`;
+    row.querySelector('.view-btn').addEventListener('click', () => {
+      closeRecordsModalPanel();
+      showDetail(record, true);
     });
-  });
+    return row;
+  }
+
+  function renderRecords(filter = searchInput.value) {
+    const normalized = filter.trim().toLowerCase();
+    const matches = consultationRecords.filter((record) =>
+      `${record.name} ${record.patientId} ${record.appointmentId} ${record.notes}`.toLowerCase().includes(normalized),
+    );
+
+    recordsList.innerHTML = '';
+    if (!matches.length) {
+      recordsList.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;text-align:center;padding:20px 0;">No consultation records found.</p>';
+      return;
+    }
+
+    matches.slice(0, 3).forEach((record) => recordsList.appendChild(buildRecordRow(record)));
+  }
+
+  function openRecordsModal() {
+    allRecordsList.innerHTML = '';
+    consultationRecords.forEach((record) => allRecordsList.appendChild(buildRecordRow(record)));
+    recordsModal.classList.add('open');
+    recordsModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeRecordsModalPanel() {
+    recordsModal.classList.remove('open');
+    recordsModal.setAttribute('aria-hidden', 'true');
+  }
 
   document.getElementById('createNoteBtn').addEventListener('click', () => {
-    if (!selectedPatient) {
-      showToast('Search and select a patient first.', 'error');
+    if (!selectedAppointment) {
+      showToast('Select an appointment first.', 'error');
       searchInput.focus();
       searchInput.classList.add('input-error');
       setTimeout(() => searchInput.classList.remove('input-error'), 1500);
       return;
     }
 
+    const patient = getPatient(selectedAppointment);
     showDetail({
-      id: selectedPatient.id,
-      name: selectedPatient.name,
-      age: selectedPatient.age,
-      gender: selectedPatient.gender,
-      initials: selectedPatient.initials
+      id: `REC${Date.now()}`,
+      appointmentId: selectedAppointment.id,
+      patientId: patient.id,
+      name: patient.name,
+      age: patient.age,
+      gender: patient.gender,
+      initials: patient.initials,
+      date: selectedAppointment.date,
+      slot: selectedAppointment.slot,
+      notes: '',
+      meds: '',
+      labs: '',
     });
   });
 
@@ -174,88 +373,108 @@
 
   document.getElementById('saveNoteBtn').addEventListener('click', async () => {
     const dateVal = document.getElementById('noteDate').value;
-    const notesText = document.getElementById('noteText').value;
-    const meds = [...document.querySelectorAll('#medicineList .prescription-item span')].map(s => s.textContent).join('|');
-    const labs = [...document.querySelectorAll('#labList .prescription-item span')].map(s => s.textContent).join('|');
+    const notesText = document.getElementById('noteText').value.trim();
+    const meds = [...document.querySelectorAll('#medicineList .prescription-item span')].map((s) => s.textContent).join('|');
+    const labs = [...document.querySelectorAll('#labList .prescription-item span')].map((s) => s.textContent).join('|');
+
+    if (!notesText && !meds && !labs) {
+      showToast('Enter consultation details before saving.', 'error');
+      document.getElementById('noteText').focus();
+      return;
+    }
 
     const note = {
-      id: currentPatient?.id || Date.now().toString(),
-      name: currentPatient?.name || document.getElementById('detailName').textContent,
-      age: currentPatient?.age || '',
-      gender: currentPatient?.gender || '',
-      initials: currentPatient?.initials || '',
+      ...currentRecord,
+      id: currentRecord?.id || `REC${Date.now()}`,
       notes: notesText,
       meds,
       labs,
-      rawDate: fromInputDate(dateVal),
-      displayDate: dateVal ? new Date(dateVal).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+      date: dateVal,
+      followUp: document.getElementById('followUpDate')?.value || '',
     };
-    saveNote(note);
 
-    // ── Persist to backend so it shows in patient records ──
     try {
-      let doctorId = 'DOC003';
-      let doctorName = 'Dr. Sarah Johnson';
-      let specialization = 'General';
-      try {
-        const session = JSON.parse(localStorage.getItem('user') || '{}');
-        if (session.doctorId) doctorId = session.doctorId;
-        if (session.doctorName) doctorName = session.doctorName;
-        if (session.specialization) specialization = session.specialization;
-      } catch (_) {}
-
-      await fetch(`${API_BASE}/medical-records`, {
+      const session = getDoctorSession();
+      const response = await fetch(`${API_BASE}/medical-records`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', role: 'doctor' },
         body: JSON.stringify({
-          doctorId,
-          patientId: currentPatient?.id || note.id,
+          doctorId: getDoctorId(),
+          patientId: note.patientId,
+          appointmentId: note.appointmentId,
           type: 'consultation',
-          doctorName,
-          specialization,
-          date: dateVal || new Date().toISOString().split('T')[0],
-          consultationNote: notesText,
-          medicines: meds.replace(/\|/g, ', '),
-          followUp: document.getElementById('followUpDate')?.value || '',
+          doctorName: session.name || 'Doctor',
+          specialization: session.specialization || 'General',
+          date: note.date,
+          consultationNote: note.notes,
+          medicines: note.meds.replace(/\|/g, ', '),
+          tests: note.labs.replace(/\|/g, ', '),
+          followUp: note.followUp,
         }),
       });
-    } catch (_) {
-      // Backend may not be running; local save already succeeded
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null);
+        throw new Error(errorBody?.message || 'Unable to save consultation note');
+      }
+
+      const savedRecord = await response.json();
+      note.id = savedRecord.id || note.id;
+    } catch (error) {
+      showToast(error.message || 'Unable to save consultation note', 'error');
+      return;
     }
 
-    showToast('Consultation note saved!', 'success');
+    const existingIndex = consultationRecords.findIndex((record) => record.id === note.id);
+    if (existingIndex >= 0) {
+      consultationRecords[existingIndex] = note;
+    } else {
+      consultationRecords.unshift(note);
+    }
+
+    selectedAppointment = null;
+    searchInput.value = '';
+    await loadAppointments();
+    await loadConsultationRecords();
+    renderRecords('');
+    showToast('Consultation note saved and appointment marked completed.', 'success');
     showList();
   });
 
   document.getElementById('addMedBtn').addEventListener('click', () => {
-    const n = prompt('Medicine name and dosage:');
-    if (n) addPrescriptionItem(document.getElementById('medicineList'), n);
+    const medicine = prompt('Medicine name and dosage:');
+    if (medicine) addPrescriptionItem(document.getElementById('medicineList'), medicine);
   });
 
   document.getElementById('addLabBtn').addEventListener('click', () => {
-    const n = prompt('Lab test name:');
-    if (n) addPrescriptionItem(document.getElementById('labList'), n);
+    const lab = prompt('Lab test name:');
+    if (lab) addPrescriptionItem(document.getElementById('labList'), lab);
   });
 
   searchInput.addEventListener('input', function () {
-    const q = this.value.toLowerCase();
-    renderPatientSearch(this.value);
-    if (selectedPatient && `${selectedPatient.id} - ${selectedPatient.name}`.toLowerCase() !== q.trim()) {
-      selectedPatient = null;
-      selectedPatientChip.textContent = 'No patient selected';
-      document.querySelectorAll('#recordsList .patient-row').forEach(row => row.classList.remove('is-selected'));
-    }
-    document.querySelectorAll('#recordsList .patient-row, #savedNotesList .patient-row').forEach(r => {
-      r.style.display = (r.dataset.patient || '').toLowerCase().includes(q) ? '' : 'none';
-    });
+    selectedAppointment = null;
+    renderAppointmentSearch(this.value);
+    renderRecords(this.value);
   });
 
-  searchInput.addEventListener('focus', () => renderPatientSearch(searchInput.value));
+  searchInput.addEventListener('focus', () => renderAppointmentSearch(searchInput.value));
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.patient-search-shell')) {
-      patientSearchResults.classList.remove('open');
+      appointmentSearchResults.classList.remove('open');
     }
   });
 
-  renderSavedNotes();
+  document.getElementById('viewAllRecordsLink').addEventListener('click', (event) => {
+    event.preventDefault();
+    openRecordsModal();
+  });
+
+  document.getElementById('closeRecordsModal').addEventListener('click', closeRecordsModalPanel);
+  recordsModal.addEventListener('click', (event) => {
+    if (event.target === recordsModal) closeRecordsModalPanel();
+  });
+
+  await loadAppointments();
+  await loadConsultationRecords();
+  renderRecords('');
 })();

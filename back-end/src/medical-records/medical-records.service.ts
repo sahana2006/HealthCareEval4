@@ -1,4 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { AppointmentsService } from '../appointments/appointments.service';
 
 export type MedicalRecordType = 'consultation' | 'treatment' | 'lab';
 
@@ -13,6 +16,7 @@ export type MedicalRecord = {
   consultationNote?: string;
   medicines?: string;
   followUp?: string;
+  appointmentId?: string;
   // Treatment plan specific fields
   tests?: string;
   lifestyle?: string;
@@ -30,15 +34,24 @@ export type CreateMedicalRecordInput = {
   consultationNote?: string;
   medicines?: string;
   followUp?: string;
+  appointmentId?: string;
   tests?: string;
   lifestyle?: string;
   diet?: string;
   duration?: string;
 };
 
+const MEDICAL_RECORDS_DATA_FILE = join(
+  __dirname,
+  '..',
+  '..',
+  'data',
+  'medical-records.json',
+);
+
 @Injectable()
 export class MedicalRecordsService {
-  private readonly medicalRecords: MedicalRecord[] = [
+  private medicalRecords: MedicalRecord[] = [
     {
       id: 'MR001',
       doctorId: 'DOC001',
@@ -77,8 +90,16 @@ export class MedicalRecordsService {
     },
   ];
 
+  constructor(private readonly appointmentsService: AppointmentsService) {
+    this.loadPersistedRecords();
+  }
+
   getRecordsByPatientId(patientId: string) {
     return this.medicalRecords.filter((record) => record.patientId === patientId);
+  }
+
+  getRecordsByDoctorId(doctorId: string) {
+    return this.medicalRecords.filter((record) => record.doctorId === doctorId);
   }
 
   createRecord(input: CreateMedicalRecordInput): MedicalRecord {
@@ -102,13 +123,41 @@ export class MedicalRecordsService {
       consultationNote: input.consultationNote?.trim(),
       medicines: input.medicines?.trim(),
       followUp: input.followUp?.trim(),
+      appointmentId: input.appointmentId?.trim(),
       tests: input.tests?.trim(),
       lifestyle: input.lifestyle?.trim(),
       diet: input.diet?.trim(),
       duration: input.duration?.trim(),
     };
 
+    if (record.type === 'consultation' && record.appointmentId) {
+      this.appointmentsService.completeAppointment(record.appointmentId);
+    }
+
     this.medicalRecords.unshift(record);
+    this.persistRecords();
+
     return { ...record };
+  }
+
+  private loadPersistedRecords() {
+    try {
+      if (!existsSync(MEDICAL_RECORDS_DATA_FILE)) {
+        return;
+      }
+
+      const saved = JSON.parse(readFileSync(MEDICAL_RECORDS_DATA_FILE, 'utf8'));
+      if (Array.isArray(saved)) {
+        this.medicalRecords = saved;
+      }
+    } catch (_) {}
+  }
+
+  private persistRecords() {
+    mkdirSync(dirname(MEDICAL_RECORDS_DATA_FILE), { recursive: true });
+    writeFileSync(
+      MEDICAL_RECORDS_DATA_FILE,
+      JSON.stringify(this.medicalRecords, null, 2),
+    );
   }
 }
