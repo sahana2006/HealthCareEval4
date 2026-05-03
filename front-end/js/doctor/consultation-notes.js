@@ -158,20 +158,15 @@
     const normalized = query.trim().toLowerCase();
     appointmentSearchResults.innerHTML = '';
 
-    if (!normalized) {
-      appointmentSearchResults.classList.remove('open');
-      return;
-    }
-
-    const matches = appointments.filter((appointment) => {
+    const matches = normalized ? appointments.filter((appointment) => {
       const patient = getPatient(appointment);
       return `${appointment.id} ${patient.id} ${patient.name} ${appointment.date} ${appointment.slot}`
         .toLowerCase()
         .includes(normalized);
-    });
+    }) : appointments;
 
     if (!matches.length) {
-      appointmentSearchResults.innerHTML = '<button type="button" class="patient-search-option empty" disabled>No matching appointment found</button>';
+      appointmentSearchResults.innerHTML = '<button type="button" class="patient-search-option empty" disabled>No upcoming appointments found</button>';
       appointmentSearchResults.classList.add('open');
       return;
     }
@@ -183,7 +178,7 @@
       btn.className = 'patient-search-option';
       btn.innerHTML = `
         <span><strong>${patient.name}</strong><small>${appointment.id} | ${formatDisplayDate(appointment.date)} | ${appointment.slot}</small></span>
-        <span>${appointment.status || 'scheduled'}</span>`;
+        <span>${appointment.status || 'upcoming'}</span>`;
       btn.addEventListener('click', () => selectAppointment(appointment));
       appointmentSearchResults.appendChild(btn);
     });
@@ -273,6 +268,55 @@
     }
 
     matches.slice(0, 3).forEach((record) => recordsList.appendChild(buildRecordRow(record)));
+  }
+
+  function renderUpcomingAppointments() {
+    const upcomingAppointmentsList = document.getElementById('upcomingAppointmentsList');
+    if (!upcomingAppointmentsList) return;
+    upcomingAppointmentsList.innerHTML = '';
+    
+    if (!appointments.length) {
+      upcomingAppointmentsList.innerHTML = '<p style="color:var(--text-muted);font-size:.875rem;text-align:center;padding:20px 0;">No upcoming appointments.</p>';
+      return;
+    }
+    
+    const sorted = [...appointments].sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.slot}`);
+      const dateB = new Date(`${b.date}T${b.slot}`);
+      return dateA - dateB;
+    });
+
+    sorted.slice(0, 5).forEach((appointment) => {
+      const patient = getPatient(appointment);
+      const row = document.createElement('div');
+      row.className = 'patient-row';
+      row.innerHTML = `
+        <div class="patient-left">
+          <div class="avatar" style="background:var(--accent);">${patient.initials}</div>
+          <div>
+            <div class="patient-name">${patient.name} <span class="meta-inline">${[patient.age, patient.gender].filter(Boolean).join(' | ')}</span></div>
+            <div class="patient-meta">Appointment: ${appointment.id}</div>
+          </div>
+        </div>
+        <div class="patient-right">
+          <span class="date-label">${formatDisplayDate(appointment.date)} ${appointment.slot}</span>
+          <button class="btn-view select-apt-btn" type="button" style="padding: 6px 12px; font-size: .8rem; border-radius: var(--radius-sm); border: 1.5px solid var(--accent); color: var(--accent); background: transparent; cursor: pointer; transition: all 0.2s ease;">Select</button>
+        </div>`;
+      row.querySelector('.select-apt-btn').addEventListener('click', () => {
+        selectAppointment(appointment);
+        searchInput.focus();
+        // Optional: you could scroll up or trigger search
+      });
+      row.querySelector('.select-apt-btn').addEventListener('mouseover', (e) => {
+        e.target.style.background = 'var(--accent)';
+        e.target.style.color = 'var(--white)';
+      });
+      row.querySelector('.select-apt-btn').addEventListener('mouseout', (e) => {
+        e.target.style.background = 'transparent';
+        e.target.style.color = 'var(--accent)';
+      });
+      upcomingAppointmentsList.appendChild(row);
+    });
   }
 
   function openRecordsModal() {
@@ -382,6 +426,7 @@
     searchInput.value = '';
     await loadAppointments();
     await loadConsultationRecords();
+    renderUpcomingAppointments();
     renderRecords('');
     showToast('Consultation note saved and appointment marked completed.', 'success');
     showList();
@@ -403,6 +448,7 @@
     renderRecords(this.value);
   });
 
+  searchInput.addEventListener('click', () => renderAppointmentSearch(searchInput.value));
   searchInput.addEventListener('focus', () => renderAppointmentSearch(searchInput.value));
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.patient-search-shell')) {
@@ -422,5 +468,6 @@
 
   await loadAppointments();
   await loadConsultationRecords();
+  renderUpcomingAppointments();
   renderRecords('');
 })();

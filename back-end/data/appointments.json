@@ -1,13 +1,5 @@
 [
   {
-    "id": "APT1777805929715",
-    "userId": "PAT001",
-    "doctorId": "DOC001",
-    "date": "2026-05-05",
-    "slot": "10:30",
-    "status": "upcoming"
-  },
-  {
     "id": "APT1777782659070",
     "userId": "PAT001",
     "doctorId": "DOC001",

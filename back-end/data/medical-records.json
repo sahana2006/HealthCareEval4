@@ -1,5 +1,20 @@
 [
   {
+    "id": "MR1777810830363",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "treatment",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "General",
+    "date": "2026-05-03",
+    "medicines": "weacs",
+    "appointmentId": "APT1777805929715",
+    "tests": "sacdsec",
+    "lifestyle": "xve",
+    "diet": "vsdve",
+    "duration": "ewfwe2"
+  },
+  {
     "id": "MR1777782600467",
     "doctorId": "DOC001",
     "patientId": "PAT001",
