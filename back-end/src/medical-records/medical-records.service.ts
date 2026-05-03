@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { AppointmentsService } from '../appointments/appointments.service';
+import { PatientsService } from '../patients/patients.service';
 
 export type MedicalRecordType = 'consultation' | 'treatment' | 'lab';
 
@@ -16,6 +17,7 @@ export type MedicalRecord = {
   consultationNote?: string;
   medicines?: string;
   followUp?: string;
+  followUpDate?: string;
   appointmentId?: string;
   // Treatment plan specific fields
   tests?: string;
@@ -34,6 +36,7 @@ export type CreateMedicalRecordInput = {
   consultationNote?: string;
   medicines?: string;
   followUp?: string;
+  followUpDate?: string;
   appointmentId?: string;
   tests?: string;
   lifestyle?: string;
@@ -64,6 +67,7 @@ export class MedicalRecordsService {
         'Reviewed recurring skin irritation and advised trigger avoidance plus hydration.',
       medicines: 'Cetirizine 10mg once daily, Calamine lotion twice daily',
       followUp: '2026-05-10',
+      followUpDate: '2026-05-10',
     },
     {
       id: 'MR002',
@@ -90,7 +94,10 @@ export class MedicalRecordsService {
     },
   ];
 
-  constructor(private readonly appointmentsService: AppointmentsService) {
+  constructor(
+    private readonly appointmentsService: AppointmentsService,
+    private readonly patientsService: PatientsService,
+  ) {
     this.loadPersistedRecords();
   }
 
@@ -100,6 +107,40 @@ export class MedicalRecordsService {
 
   getRecordsByDoctorId(doctorId: string) {
     return this.medicalRecords.filter((record) => record.doctorId === doctorId);
+  }
+
+  getFollowUps() {
+    return this.medicalRecords
+      .filter((record) => record.type === 'consultation')
+      .map((record) => this.toRecordWithFollowUpDetails(record))
+      .filter((record) => record.followUpDate)
+      .filter(
+        (record) =>
+          !this.appointmentsService.hasUpcomingAppointment(
+            record.patientId,
+            record.doctorId,
+            record.followUpDate,
+          ),
+      );
+  }
+
+  private toRecordWithFollowUpDetails(record: MedicalRecord) {
+    const followUpDate = record.followUpDate || record.followUp || '';
+
+    let patientName = record.patientId;
+    let patientPhone = '';
+    try {
+      const patient = this.patientsService.getPatientByUserId(record.patientId);
+      patientName = `${patient.firstName} ${patient.lastName}`.trim();
+      patientPhone = patient.phone;
+    } catch (_) {}
+
+    return {
+      ...record,
+      followUpDate,
+      patientName,
+      patientPhone,
+    };
   }
 
   createRecord(input: CreateMedicalRecordInput): MedicalRecord {
@@ -112,6 +153,9 @@ export class MedicalRecordsService {
       throw new BadRequestException(`type must be one of: ${allowedTypes.join(', ')}`);
     }
 
+    const normalizedFollowUpDate =
+      input.followUpDate?.trim() || input.followUp?.trim() || undefined;
+
     const record: MedicalRecord = {
       id: `MR${Date.now()}`,
       doctorId: input.doctorId,
@@ -122,7 +166,8 @@ export class MedicalRecordsService {
       date: input.date?.trim() || new Date().toISOString().split('T')[0],
       consultationNote: input.consultationNote?.trim(),
       medicines: input.medicines?.trim(),
-      followUp: input.followUp?.trim(),
+      followUp: normalizedFollowUpDate,
+      followUpDate: normalizedFollowUpDate,
       appointmentId: input.appointmentId?.trim(),
       tests: input.tests?.trim(),
       lifestyle: input.lifestyle?.trim(),
@@ -137,7 +182,10 @@ export class MedicalRecordsService {
     this.medicalRecords.unshift(record);
     this.persistRecords();
 
-    return { ...record };
+    return {
+      ...record,
+      followUpDate: record.followUpDate || record.followUp,
+    };
   }
 
   private loadPersistedRecords() {

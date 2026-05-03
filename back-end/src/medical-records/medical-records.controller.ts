@@ -34,6 +34,7 @@ export class MedicalRecordsController {
       consultationNote: body.consultationNote?.trim(),
       medicines: body.medicines?.trim(),
       followUp: body.followUp?.trim(),
+      followUpDate: body.followUpDate?.trim(),
       appointmentId: body.appointmentId?.trim(),
       tests: body.tests?.trim(),
       lifestyle: body.lifestyle?.trim(),

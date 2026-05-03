@@ -157,6 +157,20 @@ export class AppointmentsService {
       .map((appointment) => this.toAppointmentDetails(appointment));
   }
 
+  hasUpcomingAppointment(
+    userId: string,
+    doctorId: string,
+    date: string,
+  ): boolean {
+    return this.appointments.some(
+      (appointment) =>
+        appointment.userId === userId &&
+        appointment.doctorId === doctorId &&
+        appointment.date === date &&
+        appointment.status === 'upcoming',
+    );
+  }
+
   hasCompletedAppointment(userId: string, doctorId: string): boolean {
     return this.appointments.some(
       (appointment) =>

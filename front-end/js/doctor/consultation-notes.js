@@ -16,52 +16,7 @@
   let selectedAppointment = null;
   let currentRecord = null;
 
-  const DEMO_CONSULTATION_RECORDS = [
-    {
-      id: 'REC001',
-      appointmentId: 'APT101',
-      patientId: 'PAT-002',
-      name: 'Neil Verma',
-      age: '45',
-      gender: 'Male',
-      initials: 'NV',
-      notes: 'Patient presented with high blood pressure and dizziness. Prescribed medication.',
-      meds: 'Lisinopril 10 mg - Take once daily|Hydrochlorthiazide 25 mg - Take once daily',
-      labs: 'Blood Test',
-      date: '2026-03-05',
-      slot: '10:00',
-    },
-    {
-      id: 'REC002',
-      appointmentId: 'APT102',
-      patientId: 'PAT-003',
-      name: 'Dev Patel',
-      age: '36',
-      gender: 'Male',
-      initials: 'DP',
-      notes: 'Chest pain check-up.',
-      meds: 'Aspirin 75 mg - Take once daily',
-      labs: 'ECG|Blood Test',
-      date: '2026-03-05',
-      slot: '11:00',
-    },
-    {
-      id: 'REC003',
-      appointmentId: 'APT103',
-      patientId: 'PAT-004',
-      name: 'Ria Sharma',
-      age: '19',
-      gender: 'Female',
-      initials: 'RS',
-      notes: 'Knee pain and started therapy.',
-      meds: 'Ibuprofen 400 mg - Twice daily',
-      labs: 'X-Ray',
-      date: '2026-03-05',
-      slot: '12:00',
-    },
-  ];
-
-  let consultationRecords = [...DEMO_CONSULTATION_RECORDS];
+  let consultationRecords = [];
 
   function getDoctorSession() {
     try {
@@ -151,7 +106,7 @@
       labs: toPipeList(record.tests),
       date: record.date || appointment?.date || '',
       slot: appointment?.slot || '',
-      followUp: record.followUp || '',
+      followUp: record.followUpDate || record.followUp || '',
     };
   }
 
@@ -191,12 +146,11 @@
       });
       if (!response.ok) throw new Error('Unable to load consultation records');
       const records = await response.json();
-      const consultationOnly = records
+      consultationRecords = records
         .filter((record) => record.type === 'consultation')
         .map(normalizeMedicalRecord);
-      consultationRecords = consultationOnly.length ? consultationOnly : [...DEMO_CONSULTATION_RECORDS];
     } catch (_) {
-      consultationRecords = [...DEMO_CONSULTATION_RECORDS];
+      consultationRecords = [];
     }
   }
 
@@ -401,6 +355,7 @@
           medicines: note.meds.replace(/\|/g, ', '),
           tests: note.labs.replace(/\|/g, ', '),
           followUp: note.followUp,
+          followUpDate: note.followUp,
         }),
       });
 

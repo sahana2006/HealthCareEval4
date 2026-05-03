@@ -48,6 +48,27 @@ export class UsersService {
       role: 'patient',
     },
     {
+      id: 'PAT002',
+      name: 'Arun Menon',
+      email: 'arun.menon@medbits.com',
+      password: 'patient123',
+      role: 'patient',
+    },
+    {
+      id: 'PAT003',
+      name: 'Farah Ali',
+      email: 'farah.ali@medbits.com',
+      password: 'patient123',
+      role: 'patient',
+    },
+    {
+      id: 'PAT004',
+      name: 'Dev Patel',
+      email: 'dev.patel@medbits.com',
+      password: 'patient123',
+      role: 'patient',
+    },
+    {
       id: 'DOC001',
       name: 'Dr. S Madhuri',
       email: 'madhuri@medbits.com',
