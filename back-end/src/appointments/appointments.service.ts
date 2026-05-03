@@ -121,6 +121,12 @@ export class AppointmentsService {
     return this.toAppointmentDetails(appointment);
   }
 
+  getUpcomingAppointments() {
+    return this.appointments
+      .filter((appointment) => appointment.status === 'upcoming')
+      .map((appointment) => this.toAppointmentDetails(appointment));
+  }
+
   getAppointmentsByUserId(userId: string, status?: string) {
     const normalizedStatus =
       status === 'upcoming' || status === 'completed' ? status : undefined;

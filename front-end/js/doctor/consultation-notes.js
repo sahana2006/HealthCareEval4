@@ -11,20 +11,6 @@
   const recordsModal = document.getElementById('recordsModal');
   const allRecordsList = document.getElementById('allRecordsList');
 
-  const PATIENTS = {
-    PAT001: { id: 'PAT001', name: 'Ria Sharma', age: '19', gender: 'Female', initials: 'RS' },
-    'PAT-001': { id: 'PAT-001', name: 'Alisha Verma', age: '32', gender: 'Female', initials: 'AV' },
-    'PAT-002': { id: 'PAT-002', name: 'Neil Verma', age: '45', gender: 'Male', initials: 'NV' },
-    'PAT-003': { id: 'PAT-003', name: 'Dev Patel', age: '36', gender: 'Male', initials: 'DP' },
-    'PAT-004': { id: 'PAT-004', name: 'Ria Sharma', age: '19', gender: 'Female', initials: 'RS' },
-  };
-
-  const FALLBACK_APPOINTMENTS = [
-    { id: 'APT101', userId: 'PAT-002', date: '2026-03-05', slot: '10:00', status: 'completed' },
-    { id: 'APT102', userId: 'PAT-003', date: '2026-03-05', slot: '11:00', status: 'completed' },
-    { id: 'APT103', userId: 'PAT-004', date: '2026-03-05', slot: '12:00', status: 'completed' },
-  ];
-
   let appointments = [];
   let doctorAppointments = [];
   let selectedAppointment = null;
@@ -87,7 +73,7 @@
 
   function getDoctorId() {
     const session = getDoctorSession();
-    return session.doctorId || session.id || 'DOC003';
+    return session.doctorId || session.id || '';
   }
 
   function getPatient(appointment) {
@@ -103,7 +89,7 @@
     }
 
     const fallbackId = appointment.userId || appointment.patientId || 'PATIENT';
-    return PATIENTS[fallbackId] || {
+    return {
       id: fallbackId,
       name: fallbackId,
       age: '',
@@ -144,7 +130,7 @@
 
   function normalizeMedicalRecord(record) {
     const appointment = getAppointmentById(record.appointmentId);
-    const patient = appointment ? getPatient(appointment) : PATIENTS[record.patientId] || {
+    const patient = appointment ? getPatient(appointment) : {
       id: record.patientId || 'PATIENT',
       name: record.patientId || 'Patient',
       age: '',
@@ -178,18 +164,23 @@
   }
 
   async function loadAppointments() {
+    if (!getDoctorId()) {
+      doctorAppointments = [];
+      appointments = [];
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE}/doctors/${encodeURIComponent(getDoctorId())}/appointments`, {
+      const response = await fetch(`${API_BASE}/appointments/doctor/${encodeURIComponent(getDoctorId())}`, {
         headers: { role: 'doctor' },
       });
       if (!response.ok) throw new Error('Unable to load appointments');
       const data = await response.json();
       doctorAppointments = data;
-      const upcomingAppointments = data.filter((appointment) => appointment.status === 'upcoming');
-      appointments = data.length ? upcomingAppointments : FALLBACK_APPOINTMENTS;
+      appointments = data.filter((appointment) => appointment.status === 'upcoming');
     } catch (_) {
-      doctorAppointments = FALLBACK_APPOINTMENTS;
-      appointments = FALLBACK_APPOINTMENTS;
+      doctorAppointments = [];
+      appointments = [];
     }
   }
 

@@ -19,6 +19,12 @@ import {
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
+  @Roles('frontdesk')
+  @Get()
+  getUpcomingAppointments() {
+    return this.appointmentsService.getUpcomingAppointments();
+  }
+
   @Roles('patient', 'frontdesk')
   @Post()
   createAppointment(@Body() body: Partial<CreateAppointmentInput>) {

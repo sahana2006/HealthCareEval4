@@ -15,6 +15,12 @@ import {
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  @Roles('doctor', 'frontdesk')
+  @Get()
+  getAllPatients() {
+    return this.patientsService.getAllPatients();
+  }
+
   @Roles('patient', 'doctor', 'frontdesk')
   @Get(':userId')
   getPatientProfile(@Param('userId') userId: string) {

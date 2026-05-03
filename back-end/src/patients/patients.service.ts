@@ -39,6 +39,10 @@ export class PatientsService {
     return { ...patient };
   }
 
+  getAllPatients(): PatientProfile[] {
+    return this.patients.map((patient) => ({ ...patient }));
+  }
+
   createPatientProfile(profile: PatientProfile): PatientProfile {
     this.patients.push({ ...profile });
     return { ...profile };

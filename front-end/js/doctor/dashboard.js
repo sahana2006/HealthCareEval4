@@ -1,5 +1,6 @@
 /* ── dashboard.js ── */
 const DOCTOR_API_BASE = 'http://localhost:3000';
+let doctorAppointmentsRefreshTimer = null;
 
 (async () => {
   await loadComponents('dashboard', 'Dashboard');
@@ -9,23 +10,39 @@ const DOCTOR_API_BASE = 'http://localhost:3000';
   const bannerTitle = document.querySelector('.banner-title');
   if (bannerTitle) bannerTitle.textContent = `Welcome back, ${profile.name}!`;
 
-  // Resolve logged-in doctor ID from session (falls back to DOC003 for demo)
-  let doctorId = 'DOC003';
+  let doctorId = '';
   try {
     const session = JSON.parse(localStorage.getItem('user') || '{}');
     if (session && (session.doctorId || session.id)) doctorId = session.doctorId || session.id;
   } catch (_) {}
 
+  if (!doctorId) {
+    await loadDashboardAppointments('');
+    return;
+  }
+
   await loadDashboardAppointments(doctorId);
+  startDoctorAppointmentsRefresh(doctorId);
 })();
 
 async function loadDashboardAppointments(doctorId) {
   const appointmentsContainer = document.getElementById('appointmentsList');
   const statToday = document.getElementById('statToday');
 
+  if (!doctorId) {
+    if (appointmentsContainer) {
+      appointmentsContainer.innerHTML =
+        '<p style="color:var(--text-muted);font-size:.875rem;padding:16px 0;">Doctor session not found.</p>';
+    }
+    if (statToday) statToday.textContent = '0';
+    const statCompleted = document.getElementById('statCompleted');
+    if (statCompleted) statCompleted.textContent = '0';
+    return;
+  }
+
   try {
     const response = await fetch(
-      `${DOCTOR_API_BASE}/doctors/${encodeURIComponent(doctorId)}/appointments`,
+      `${DOCTOR_API_BASE}/appointments/doctor/${encodeURIComponent(doctorId)}`,
       {
         headers: {
           role: 'doctor',
@@ -86,6 +103,23 @@ async function loadDashboardAppointments(doctorId) {
         '<p style="color:var(--text-muted);font-size:.875rem;padding:16px 0;">Could not load appointments — make sure the backend is running.</p>';
     }
   }
+}
+
+function startDoctorAppointmentsRefresh(doctorId) {
+  if (doctorAppointmentsRefreshTimer) return;
+
+  doctorAppointmentsRefreshTimer = window.setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      await loadDashboardAppointments(doctorId);
+    } catch (_) {}
+  }, 5000);
+
+  window.addEventListener('focus', async () => {
+    try {
+      await loadDashboardAppointments(doctorId);
+    } catch (_) {}
+  });
 }
 
 function getInitials(str) {

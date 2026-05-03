@@ -1,5 +1,29 @@
 [
   {
+    "id": "APT1777779762002",
+    "userId": "PAT002",
+    "doctorId": "DOC008",
+    "date": "2026-05-05",
+    "slot": "10:30",
+    "status": "upcoming"
+  },
+  {
+    "id": "APT1777779500810",
+    "userId": "PAT001",
+    "doctorId": "DOC001",
+    "date": "2026-05-04",
+    "slot": "10:30",
+    "status": "upcoming"
+  },
+  {
+    "id": "APT1777777923697",
+    "userId": "PAT001",
+    "doctorId": "DOC001",
+    "date": "2026-05-04",
+    "slot": "10:00",
+    "status": "completed"
+  },
+  {
     "id": "APT1777750981092",
     "userId": "PAT001",
     "doctorId": "DOC001",

@@ -11,6 +11,7 @@ import { MedicinesModule } from './medicines/medicines.module';
 import { OrdersModule } from './orders/orders.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
+import { WalkInsModule } from './walkins/walkins.module';
 import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
@@ -24,6 +25,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     DoctorsModule,
     AppointmentsModule,
     FeedbackModule,
+    WalkInsModule,
   ],
   controllers: [AppController],
   providers: [

@@ -1,5 +1,47 @@
 [
   {
+    "id": "MR1777778149672",
+    "doctorId": "DOC003",
+    "patientId": "PAT-004",
+    "type": "treatment",
+    "doctorName": "Dr. Sarah Johnson",
+    "specialization": "General",
+    "date": "2026-05-03",
+    "medicines": "Asprinn",
+    "tests": "None",
+    "lifestyle": "Good sleep",
+    "diet": "Nuts and fruits",
+    "duration": "2 weeks"
+  },
+  {
+    "id": "MR1777778097224",
+    "doctorId": "DOC003",
+    "patientId": "PAT-001",
+    "type": "treatment",
+    "doctorName": "Dr. Sarah Johnson",
+    "specialization": "General",
+    "date": "2026-05-03",
+    "medicines": "qw",
+    "tests": "qsas",
+    "lifestyle": "qas",
+    "diet": "qsass",
+    "duration": "2weeks"
+  },
+  {
+    "id": "MR1777778013150",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "consultation",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "General",
+    "date": "2026-05-04",
+    "consultationNote": "Mild Fever",
+    "medicines": "asprin",
+    "followUp": "",
+    "appointmentId": "APT1777777923697",
+    "tests": ""
+  },
+  {
     "id": "MR1777753031750",
     "doctorId": "DOC003",
     "patientId": "PAT-002",
