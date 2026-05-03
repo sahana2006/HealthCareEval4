@@ -178,6 +178,7 @@ async function loadPatients() {
 async function loadDoctors() {
   const response = await fetch(`${APPOINTMENTS_API_BASE_URL}/doctors`, {
     headers: { role: 'frontdesk' },
+    cache: 'no-store',
   });
 
   if (!response.ok) {

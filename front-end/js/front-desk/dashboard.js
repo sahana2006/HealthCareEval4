@@ -42,6 +42,11 @@ async function loadDashboardFrontdeskProfile() {
     nameElement.textContent = profile.name;
   }
 
+  const welcomeElement = document.getElementById('dashboard-welcome-title');
+  if (welcomeElement) {
+    welcomeElement.textContent = `Welcome, ${profile.name}!`;
+  }
+
   return profile;
 }
 

@@ -49,6 +49,7 @@ async function loadAllDoctors() {
     headers: {
       role: 'patient',
     },
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -67,6 +68,7 @@ async function loadDoctorsBySpecialization(specialization) {
       headers: {
         role: 'patient',
       },
+      cache: 'no-store',
     },
   );
 
@@ -112,6 +114,7 @@ function renderAppointments() {
   selectedDoctor = null;
   selectedSlot = null;
   renderSpecializationOptions();
+  renderSpecialtyBrowseCards();
   refreshApptLists();
   document.getElementById('doctorSection').style.display = 'none';
 }
@@ -137,6 +140,35 @@ function renderSpecializationOptions() {
   if (currentValue && specializations.includes(currentValue)) {
     sel.value = currentValue;
   }
+}
+
+function renderSpecialtyBrowseCards() {
+  const grid = document.getElementById('specialtyBrowseGrid');
+  if (!grid) return;
+
+  const specializations = [...new Set(allDoctors.map((doctor) => doctor.specialization))];
+
+  if (!specializations.length) {
+    grid.innerHTML = '<p class="text-muted">No specialties available.</p>';
+    return;
+  }
+
+  grid.innerHTML = specializations
+    .map(
+      (specialization) => `
+        <div class="cat-card" data-spec="${specialization}">
+          <div class="cat-icon"><i class="fa-solid fa-user-doctor"></i></div>
+          <div class="cat-name">${specialization}</div>
+        </div>
+      `,
+    )
+    .join('');
+
+  grid.querySelectorAll('.cat-card').forEach((card) => {
+    card.addEventListener('click', () => {
+      selectSpeciality(card.dataset.spec);
+    });
+  });
 }
 
 function refreshApptLists() {

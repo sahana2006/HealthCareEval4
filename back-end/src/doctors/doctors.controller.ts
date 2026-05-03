@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Post,
   Put,
@@ -37,6 +38,7 @@ export class DoctorsController {
   @ApiQuery({ name: 'specialization', required: false, description: 'Filter by specialization (e.g. Cardiologist)' })
   @ApiResponse({ status: 200, description: 'Array of doctor profiles' })
   @Roles('patient', 'doctor', 'frontdesk', 'admin')
+  @Header('Cache-Control', 'no-store')
   @Get()
   listDoctors(@Query('specialization') specialization?: string) {
     return this.doctorsService.findAll(specialization);
