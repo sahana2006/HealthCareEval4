@@ -12,6 +12,7 @@ type SignupBody = SignupInput;
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  // Public — no role required (user has no session yet)
   @Post()
   signup(@Body() body: Partial<SignupBody>) {
     return this.usersService.signupPatient({
@@ -27,6 +28,7 @@ export class UsersController {
     });
   }
 
+  // Public — no role required (authenticates and returns session)
   @Post('login')
   login(@Body() body: LoginBody) {
     const email = body?.email?.trim();

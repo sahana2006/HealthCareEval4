@@ -72,7 +72,14 @@ export class AppointmentsService {
   }
 
   getAvailableSlots(doctorId: string, date: string): string[] {
+    // If the doctor has marked the entire date as unavailable, return nothing
+    if (this.doctorsService.isDateUnavailable(doctorId, date)) {
+      return [];
+    }
+
     const doctor = this.doctorsService.getDoctorById(doctorId);
+
+    // Collect slots already booked by patients
     const bookedSlots = new Set(
       this.appointments
         .filter(
@@ -82,7 +89,15 @@ export class AppointmentsService {
         .map((appointment) => appointment.slot),
     );
 
-    return doctor.slots.filter((slot) => !bookedSlots.has(slot));
+    // Collect slots explicitly blocked by the doctor for this date
+    const doctorBlockedSlots = this.doctorsService.getBlockedSlotTimesForDate(
+      doctorId,
+      date,
+    );
+
+    return doctor.slots.filter(
+      (slot) => !bookedSlots.has(slot) && !doctorBlockedSlots.has(slot),
+    );
   }
 
   createAppointment(input: CreateAppointmentInput) {
@@ -95,6 +110,22 @@ export class AppointmentsService {
     const doctor = this.doctorsService.getDoctorById(input.doctorId);
     if (!doctor.slots.includes(input.slot)) {
       throw new BadRequestException('Invalid doctor slot');
+    }
+
+    // Reject booking on a fully-unavailable date
+    if (this.doctorsService.isDateUnavailable(input.doctorId, input.date)) {
+      throw new BadRequestException(
+        'The doctor is not available on this date',
+      );
+    }
+
+    // Reject booking on a doctor-blocked slot
+    const blockedSlots = this.doctorsService.getBlockedSlotTimesForDate(
+      input.doctorId,
+      input.date,
+    );
+    if (blockedSlots.has(input.slot)) {
+      throw new BadRequestException('This slot has been blocked by the doctor');
     }
 
     const isAlreadyBooked = this.appointments.some(
