@@ -307,7 +307,17 @@ export class AppointmentsService {
   }
 
   private toAppointmentDetails(appointment: Appointment) {
-    const doctor = this.doctorsService.getDoctorById(appointment.doctorId);
+    let doctor: any = null;
+    try {
+      doctor = this.doctorsService.getDoctorById(appointment.doctorId);
+    } catch (_) {
+      doctor = {
+        id: appointment.doctorId,
+        name: 'Unknown Doctor',
+        specialization: '',
+        department: '',
+      };
+    }
     let patient: Record<string, string> | null = null;
 
     try {
