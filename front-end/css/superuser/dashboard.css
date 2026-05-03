@@ -10,6 +10,12 @@
     --teal: #0f766e;
     --teal-light: #14b8a6;
     --teal-pale: #ccfbf1;
+    --pastel-purple: #ede9fe;
+    --pastel-purple-text: #7c3aed;
+    --pastel-orange: #ffedd5;
+    --pastel-orange-text: #c2410c;
+    --pastel-green: #dcfce7;
+    --pastel-green-text: #16a34a;
     --surface: #ffffff;
     --bg: #f0fdf9;
     --border: #e2e8f0;
@@ -198,8 +204,6 @@ body {
 }
 
 .action-btn {
-    background: var(--teal-light);
-    color: white;
     border: none;
     border-radius: 1rem;
     padding: 2rem;
@@ -209,15 +213,14 @@ body {
     align-items: center;
     justify-content: center;   /* center properly */
     gap: 1rem;
-    transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease;
+    transition: transform 0.22s ease, box-shadow 0.22s ease, filter 0.22s ease, background-color 0.22s ease;
     width: 100%;              /* important */
     height: 180px;
-    box-shadow: 0 16px 24px rgba(15, 118, 110, 0.22);
+    box-shadow: 0 4px 12px rgba(15, 118, 110, 0.05);
 }
 
 .action-btn:hover {
     transform: translateY(-4px);
-    filter: saturate(1.05);
 }
 
 .action-btn i {
@@ -232,19 +235,23 @@ body {
 }
 
 .quick-actions a:nth-child(1) .action-btn {
-    background: var(--teal-light);
-    box-shadow: var(--shadow);
+    background: var(--pastel-purple);
+    color: var(--pastel-purple-text);
 }
 
 .quick-actions a:nth-child(2) .action-btn {
-    background: var(--teal-light);
-    box-shadow: var(--shadow);
+    background: var(--pastel-orange);
+    color: var(--pastel-orange-text);
 }
 
 .quick-actions a:nth-child(3) .action-btn {
-    background: var(--teal-light);
-    box-shadow: var(--shadow);
+    background: var(--pastel-green);
+    color: var(--pastel-green-text);
 }
+
+.quick-actions a:nth-child(1) .action-btn:hover { background-color: #ddd6fe; }
+.quick-actions a:nth-child(2) .action-btn:hover { background-color: #fed7aa; }
+.quick-actions a:nth-child(3) .action-btn:hover { background-color: #bbf7d0; }
 
 /* Bottom Section */
 .bottom-section {
@@ -261,11 +268,11 @@ body {
 }
 
 .appointment-item {
-    background: var(--surface);
+    background: #f8fafc;
+    border: 1px solid var(--border);
     color: var(--text);
     border-radius: 1rem;
     padding: 1.5rem;
-    box-shadow: var(--shadow);
 }
 
 .patient-name {
@@ -286,14 +293,14 @@ body {
 }
 
 .alert-item {
-    background: var(--surface);
+    background: #f8fafc;
+    border: 1px solid var(--border);
     color: var(--text);
     border-radius: 1rem;
     padding: 1.5rem;
     display: flex;
     align-items: flex-start;
     gap: 1rem;
-    box-shadow: var(--shadow);
 }
 
 .alert-item i {
