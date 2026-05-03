@@ -277,25 +277,47 @@ function renderNotifications() {
   const container = document.getElementById('notification-list');
   if (!container) return;
 
-  const queueItems = getQueueItems();
-  const waitingCount = queueItems.filter(item => item.status === 'Waiting').length;
-  const consultingCount = queueItems.filter(item => item.status === 'In Consultation').length;
+  fetch('http://localhost:3000/queue', {
+    headers: { role: 'frontdesk' },
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error('Failed to load queue notifications');
+      }
 
-  const notifications = [
-    { title: `${waitingCount} patients waiting`, meta: 'Queue management', tone: 'warning' },
-    { title: `${consultingCount} consultations in progress`, meta: 'Doctor desks', tone: 'info' },
-    { title: 'Walk-in counter is active', meta: 'Front desk operations', tone: 'success' }
-  ];
+      return response.json();
+    })
+    .then((queueItems) => {
+      const waitingCount = queueItems.filter(item => item.status === 'waiting').length;
+      const consultingCount = queueItems.filter(item => item.status === 'in-progress').length;
 
-  container.innerHTML = notifications.map(item => `
-    <div class="notification-item">
-      <span class="notification-dot notification-dot--${item.tone}"></span>
-      <div class="notification-copy">
-        <div class="notification-title">${item.title}</div>
-        <div class="notification-meta">${item.meta}</div>
-      </div>
-    </div>
-  `).join('');
+      const notifications = [
+        { title: `${waitingCount} patients waiting`, meta: 'Queue management', tone: 'warning' },
+        { title: `${consultingCount} consultations in progress`, meta: 'Doctor desks', tone: 'info' },
+        { title: 'Walk-in counter is active', meta: 'Front desk operations', tone: 'success' }
+      ];
+
+      container.innerHTML = notifications.map(item => `
+        <div class="notification-item">
+          <span class="notification-dot notification-dot--${item.tone}"></span>
+          <div class="notification-copy">
+            <div class="notification-title">${item.title}</div>
+            <div class="notification-meta">${item.meta}</div>
+          </div>
+        </div>
+      `).join('');
+    })
+    .catch(() => {
+      container.innerHTML = `
+        <div class="notification-item">
+          <span class="notification-dot notification-dot--info"></span>
+          <div class="notification-copy">
+            <div class="notification-title">Queue updates unavailable</div>
+            <div class="notification-meta">Backend connection needed</div>
+          </div>
+        </div>
+      `;
+    });
 }
 
 // --- Validate form fields ---

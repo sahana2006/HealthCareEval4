@@ -10,6 +10,7 @@ import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { OrdersModule } from './orders/orders.module';
 import { PatientsModule } from './patients/patients.module';
+import { QueueModule } from './queue/queue.module';
 import { UsersModule } from './users/users.module';
 import { WalkInsModule } from './walkins/walkins.module';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -24,6 +25,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     MedicalRecordsModule,
     DoctorsModule,
     AppointmentsModule,
+    QueueModule,
     FeedbackModule,
     WalkInsModule,
   ],

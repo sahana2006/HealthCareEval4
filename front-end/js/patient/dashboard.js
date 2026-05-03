@@ -3,8 +3,11 @@ const DASHBOARD_API_BASE_URL = 'http://localhost:3000';
 let dashboardUpcomingAppointments = [];
 let dashboardBookedLabTests = [];
 let dashboardPendingLabTests = [];
+let dashboardQueueItems = [];
+let dashboardDoctorQueueItems = [];
 let dashboardEditingAppointment = null;
 let dashboardSelectedSlot = null;
+let dashboardRefreshTimer = null;
 
 async function initializeDashboard() {
   updateTopbarUser();
@@ -16,11 +19,13 @@ async function initializeDashboard() {
 
   await Promise.all([
     loadUpcomingAppointments(session.id),
+    loadQueueItems(session.id),
     loadBookedLabTests(session.id),
     loadPendingLabTests(session.id),
   ]);
 
   renderDashboard();
+  startDashboardRefresh(session.id);
 }
 
 async function loadUpcomingAppointments(userId) {
@@ -38,6 +43,39 @@ async function loadUpcomingAppointments(userId) {
   }
 
   dashboardUpcomingAppointments = await response.json();
+}
+
+async function loadQueueItems(userId) {
+  const response = await fetch(
+    `${DASHBOARD_API_BASE_URL}/queue/user/${encodeURIComponent(userId)}`,
+    {
+      headers: {
+        role: 'patient',
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load queue status');
+  }
+
+  dashboardQueueItems = await response.json();
+  dashboardDoctorQueueItems = [];
+
+  if (dashboardQueueItems.length) {
+    const doctorResponse = await fetch(
+      `${DASHBOARD_API_BASE_URL}/queue/${encodeURIComponent(dashboardQueueItems[0].doctorId)}`,
+      {
+        headers: {
+          role: 'patient',
+        },
+      },
+    );
+
+    if (doctorResponse.ok) {
+      dashboardDoctorQueueItems = await doctorResponse.json();
+    }
+  }
 }
 
 async function loadBookedLabTests(userId) {
@@ -80,6 +118,7 @@ function renderDashboard() {
   setText('recordCount', '0');
 
   renderUpcomingAppointments();
+  renderQueueStatus();
   renderLabOrders();
 }
 
@@ -117,6 +156,35 @@ function renderUpcomingAppointments() {
       }),
     );
   });
+}
+
+function renderQueueStatus() {
+  const container = document.getElementById('queueStatusCard');
+  if (!container) return;
+
+  if (!dashboardQueueItems.length) {
+    container.innerHTML =
+      '<div class="dash-item"><div><div class="dash-item-sub">No active queue token</div></div></div>';
+    return;
+  }
+
+  const currentQueue = dashboardQueueItems[0];
+  const nowServing = dashboardDoctorQueueItems.find(
+    (item) => item.status === 'in-progress',
+  );
+
+  container.innerHTML = `
+    <div class="dash-item">
+      <div>
+        <div class="dash-item-title">Token #${currentQueue.tokenNumber}</div>
+        <div class="dash-item-sub">${currentQueue.doctor.name} | Status: ${currentQueue.status}</div>
+        <div class="dash-item-sub">Now Serving: ${nowServing ? `#${nowServing.tokenNumber}` : 'Not started yet'}</div>
+      </div>
+      <div class="dash-item-meta">
+        <span class="badge ${currentQueue.status === 'in-progress' ? 'badge-green' : 'badge-orange'}">${currentQueue.status}</span>
+      </div>
+    </div>
+  `;
 }
 
 function renderLabOrders() {
@@ -328,6 +396,7 @@ async function saveAppointmentEdit() {
 
   await Promise.all([
     loadUpcomingAppointments(session.id),
+    loadQueueItems(session.id),
     loadBookedLabTests(session.id),
     loadPendingLabTests(session.id),
   ]);
@@ -374,9 +443,27 @@ async function cancelDashboardAppointment(appointmentId) {
 
   await Promise.all([
     loadUpcomingAppointments(session.id),
+    loadQueueItems(session.id),
     loadBookedLabTests(session.id),
     loadPendingLabTests(session.id),
   ]);
   renderDashboard();
   showToast('Appointment cancelled', 'info');
+}
+
+function startDashboardRefresh(userId) {
+  if (dashboardRefreshTimer) return;
+
+  dashboardRefreshTimer = window.setInterval(async () => {
+    if (document.hidden) return;
+    try {
+      await Promise.all([
+        loadUpcomingAppointments(userId),
+        loadQueueItems(userId),
+        loadBookedLabTests(userId),
+        loadPendingLabTests(userId),
+      ]);
+      renderDashboard();
+    } catch (_) {}
+  }, 5000);
 }
