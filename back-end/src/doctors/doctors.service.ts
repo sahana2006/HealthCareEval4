@@ -1,4 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 export type Doctor = {
   id: string;
@@ -6,7 +8,7 @@ export type Doctor = {
   specialization: string;
   department: string;
   qualification: string;
-  experience: number;       // years
+  experience: number; // years
   age: number;
   gender: string;
   email: string;
@@ -15,6 +17,50 @@ export type Doctor = {
   bio: string;
   slots: string[];
 };
+
+/**
+ * A doctor-blocked time slot on a specific date.
+ * Blocked slots will be hidden from patients when booking appointments.
+ */
+export type SlotBlock = {
+  id: string;
+  doctorId: string;
+  date: string;  // YYYY-MM-DD
+  slot: string;  // HH:MM (24-hour, matches Doctor.slots)
+  reason?: string;
+};
+
+/**
+ * An entire date marked unavailable by a doctor.
+ * When a date is fully unavailable, NO slots are offered to patients.
+ */
+export type UnavailableDate = {
+  id: string;
+  doctorId: string;
+  date: string; // YYYY-MM-DD
+};
+
+export type CreateSlotBlockInput = {
+  date: string;
+  slot: string;
+  reason?: string;
+};
+
+const SLOT_BLOCKS_FILE = join(
+  __dirname,
+  '..',
+  '..',
+  'data',
+  'slot-blocks.json',
+);
+
+const UNAVAILABLE_DATES_FILE = join(
+  __dirname,
+  '..',
+  '..',
+  'data',
+  'unavailable-dates.json',
+);
 
 @Injectable()
 export class DoctorsService {
@@ -156,6 +202,18 @@ export class DoctorsService {
     },
   ];
 
+  // ─── In-memory slot management stores ───────────────────────────────────────
+
+  private slotBlocks: SlotBlock[] = [];
+  private unavailableDates: UnavailableDate[] = [];
+
+  constructor() {
+    this.loadSlotBlocks();
+    this.loadUnavailableDates();
+  }
+
+  // ─── Doctor lookup ───────────────────────────────────────────────────────────
+
   findAll(specialization?: string): Doctor[] {
     const normalizedSpecialization = specialization?.trim();
     const doctors = normalizedSpecialization
@@ -174,5 +232,250 @@ export class DoctorsService {
     }
 
     return { ...doctor, slots: [...doctor.slots] };
+  }
+
+  // ─── Slot Blocks ─────────────────────────────────────────────────────────────
+
+  /**
+   * Returns all blocked slots for a doctor, optionally filtered by date.
+   * @param doctorId The doctor's ID
+   * @param date     Optional ISO date (YYYY-MM-DD) to filter results
+   */
+  getSlotBlocks(doctorId: string, date?: string): SlotBlock[] {
+    this.getDoctorById(doctorId); // validate doctor exists
+    return this.slotBlocks.filter(
+      (b) => b.doctorId === doctorId && (date ? b.date === date : true),
+    );
+  }
+
+  /**
+   * Blocks a specific time slot on a specific date for a doctor.
+   * @throws BadRequestException if the slot is already blocked, invalid, or date is unavailable
+   */
+  blockSlot(doctorId: string, input: CreateSlotBlockInput): SlotBlock {
+    const doctor = this.getDoctorById(doctorId);
+
+    const date = input.date?.trim();
+    const slot = input.slot?.trim();
+    if (!date || !slot) {
+      throw new BadRequestException('date and slot are required');
+    }
+
+    if (!doctor.slots.includes(slot)) {
+      throw new BadRequestException(
+        `Slot "${slot}" is not a valid slot for this doctor. Valid slots: ${doctor.slots.join(', ')}`,
+      );
+    }
+
+    if (this.isDateUnavailable(doctorId, date)) {
+      throw new BadRequestException(
+        `The entire date ${date} is already marked unavailable. Remove it first if you want per-slot control.`,
+      );
+    }
+
+    const alreadyBlocked = this.slotBlocks.some(
+      (b) => b.doctorId === doctorId && b.date === date && b.slot === slot,
+    );
+    if (alreadyBlocked) {
+      throw new BadRequestException(
+        `Slot "${slot}" on ${date} is already blocked for this doctor`,
+      );
+    }
+
+    const block: SlotBlock = {
+      id: `SB${Date.now()}`,
+      doctorId,
+      date,
+      slot,
+      reason: input.reason?.trim() || undefined,
+    };
+
+    this.slotBlocks.push(block);
+    this.persistSlotBlocks();
+    return block;
+  }
+
+  /**
+   * Removes a previously blocked slot.
+   * @throws NotFoundException if the block record does not exist
+   */
+  unblockSlot(doctorId: string, blockId: string): SlotBlock {
+    this.getDoctorById(doctorId);
+    const idx = this.slotBlocks.findIndex(
+      (b) => b.id === blockId && b.doctorId === doctorId,
+    );
+    if (idx === -1) {
+      throw new NotFoundException('Slot block not found');
+    }
+
+    const [removed] = this.slotBlocks.splice(idx, 1);
+    this.persistSlotBlocks();
+    return removed;
+  }
+
+  /**
+   * Returns the set of blocked slot times for a doctor on a given date.
+   * Used internally by AppointmentsService.
+   */
+  getBlockedSlotTimesForDate(doctorId: string, date: string): Set<string> {
+    return new Set(
+      this.slotBlocks
+        .filter((b) => b.doctorId === doctorId && b.date === date)
+        .map((b) => b.slot),
+    );
+  }
+
+  // ─── Unavailable Dates ───────────────────────────────────────────────────────
+
+  /**
+   * Returns all dates marked fully unavailable for a doctor.
+   */
+  getUnavailableDates(doctorId: string): UnavailableDate[] {
+    this.getDoctorById(doctorId);
+    return this.unavailableDates.filter((u) => u.doctorId === doctorId);
+  }
+
+  /**
+   * Marks an entire date as unavailable for a doctor.
+   * @throws BadRequestException if the date is already marked
+   */
+  markDateUnavailable(doctorId: string, date: string): UnavailableDate {
+    this.getDoctorById(doctorId);
+
+    const cleanDate = date?.trim();
+    if (!cleanDate) {
+      throw new BadRequestException('date is required');
+    }
+
+    if (this.isDateUnavailable(doctorId, cleanDate)) {
+      throw new BadRequestException(`Date ${cleanDate} is already marked as unavailable`);
+    }
+
+    const entry: UnavailableDate = {
+      id: `UD${Date.now()}`,
+      doctorId,
+      date: cleanDate,
+    };
+
+    this.unavailableDates.push(entry);
+    this.persistUnavailableDates();
+    return entry;
+  }
+
+  /**
+   * Removes a date from the unavailable list.
+   * @throws NotFoundException if the entry does not exist
+   */
+  removeUnavailableDate(doctorId: string, unavailId: string): UnavailableDate {
+    this.getDoctorById(doctorId);
+    const idx = this.unavailableDates.findIndex(
+      (u) => u.id === unavailId && u.doctorId === doctorId,
+    );
+    if (idx === -1) {
+      throw new NotFoundException('Unavailable date entry not found');
+    }
+
+    const [removed] = this.unavailableDates.splice(idx, 1);
+    this.persistUnavailableDates();
+    return removed;
+  }
+
+  /**
+   * Returns true if the given date is fully blocked for a doctor.
+   * Used internally by AppointmentsService.
+   */
+  isDateUnavailable(doctorId: string, date: string): boolean {
+    return this.unavailableDates.some(
+      (u) => u.doctorId === doctorId && u.date === date,
+    );
+  }
+
+  // ─── Weekly Availability Overview ────────────────────────────────────────────
+
+  /**
+   * Returns availability summary for each day of the week starting from weekStart.
+   * @param doctorId  The doctor's ID
+   * @param weekStart ISO date (YYYY-MM-DD) for Monday of the target week (defaults to current week)
+   */
+  getWeeklyAvailability(
+    doctorId: string,
+    weekStart?: string,
+  ): Array<{
+    date: string;
+    dayName: string;
+    totalSlots: number;
+    blockedSlots: number;
+    availableSlots: number;
+    isUnavailable: boolean;
+  }> {
+    const doctor = this.getDoctorById(doctorId);
+    const totalSlots = doctor.slots.length;
+
+    // Compute the Monday of the current ISO week if not provided
+    const startDate = weekStart?.trim()
+      ? new Date(`${weekStart.trim()}T00:00:00`)
+      : this.getWeekMonday(new Date());
+
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return dayNames.map((dayName, i) => {
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+
+      const unavailable = this.isDateUnavailable(doctorId, dateStr);
+      const blocked = unavailable
+        ? totalSlots
+        : this.getBlockedSlotTimesForDate(doctorId, dateStr).size;
+
+      return {
+        date: dateStr,
+        dayName,
+        totalSlots,
+        blockedSlots: blocked,
+        availableSlots: unavailable ? 0 : totalSlots - blocked,
+        isUnavailable: unavailable,
+      };
+    });
+  }
+
+  // ─── Persistence helpers ─────────────────────────────────────────────────────
+
+  private loadSlotBlocks() {
+    try {
+      if (!existsSync(SLOT_BLOCKS_FILE)) return;
+      const data = JSON.parse(readFileSync(SLOT_BLOCKS_FILE, 'utf8'));
+      if (Array.isArray(data)) this.slotBlocks = data;
+    } catch (_) {}
+  }
+
+  private persistSlotBlocks() {
+    mkdirSync(dirname(SLOT_BLOCKS_FILE), { recursive: true });
+    writeFileSync(SLOT_BLOCKS_FILE, JSON.stringify(this.slotBlocks, null, 2));
+  }
+
+  private loadUnavailableDates() {
+    try {
+      if (!existsSync(UNAVAILABLE_DATES_FILE)) return;
+      const data = JSON.parse(readFileSync(UNAVAILABLE_DATES_FILE, 'utf8'));
+      if (Array.isArray(data)) this.unavailableDates = data;
+    } catch (_) {}
+  }
+
+  private persistUnavailableDates() {
+    mkdirSync(dirname(UNAVAILABLE_DATES_FILE), { recursive: true });
+    writeFileSync(
+      UNAVAILABLE_DATES_FILE,
+      JSON.stringify(this.unavailableDates, null, 2),
+    );
+  }
+
+  private getWeekMonday(date: Date): Date {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=Sun, 1=Mon, ...
+    const diff = day === 0 ? -6 : 1 - day; // shift to Monday
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
   }
 }
