@@ -22,6 +22,25 @@ async function initializeAppointmentsPage() {
   startAppointmentStatusRefresh();
 }
 
+async function fetchAppointmentsApi(url, role) {
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { role },
+    cache: 'no-store',
+  });
+
+  console.log(res);
+
+  const payload = await res.json().catch(() => null);
+  console.log(payload);
+
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+
+  return payload;
+}
+
 function startAppointmentStatusRefresh() {
   if (appointmentRefreshTimer) return;
 
@@ -45,38 +64,19 @@ function startAppointmentStatusRefresh() {
 }
 
 async function loadAllDoctors() {
-  const response = await fetch(`${APPOINTMENTS_API_BASE_URL}/doctors`, {
-    headers: {
-      role: 'patient',
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to load doctors');
-  }
-
-  const payload = await response.json();
+  const payload = await fetchAppointmentsApi(
+    `${APPOINTMENTS_API_BASE_URL}/doctors`,
+    'patient',
+  );
   console.log('GET /doctors response (patient):', payload);
   allDoctors = payload.map(normalizeDoctor);
 }
 
 async function loadDoctorsBySpecialization(specialization) {
-  const response = await fetch(
+  const payload = await fetchAppointmentsApi(
     `${APPOINTMENTS_API_BASE_URL}/doctors?specialization=${encodeURIComponent(specialization)}`,
-    {
-      headers: {
-        role: 'patient',
-      },
-      cache: 'no-store',
-    },
+    'patient',
   );
-
-  if (!response.ok) {
-    throw new Error('Failed to load doctors');
-  }
-
-  const payload = await response.json();
   console.log('GET /doctors by specialization response (patient):', payload);
   doctors = payload.map(normalizeDoctor);
 }
@@ -91,23 +91,38 @@ function normalizeDoctor(doctor) {
 }
 
 async function loadUserAppointments() {
-  const session = requireRole('patient');
-  if (!session) return;
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  console.log(user);
 
-  const response = await fetch(
-    `${APPOINTMENTS_API_BASE_URL}/appointments/user/${encodeURIComponent(session.id)}`,
-    {
-      headers: {
-        role: 'patient',
-      },
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error('Failed to load appointments');
+  if (!user?.id) {
+    throw new Error('Patient session not found');
   }
 
-  userAppointments = await response.json();
+  return fetch(
+    `${APPOINTMENTS_API_BASE_URL}/appointments/user/${encodeURIComponent(user.id)}`,
+    {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        role: 'patient',
+      },
+      cache: 'no-store',
+    },
+  )
+    .then((res) => {
+      console.log(res);
+      if (!res.ok) throw new Error('API failed');
+      return res.json();
+    })
+    .then((data) => {
+      console.log('Appointments:', data);
+      userAppointments = data;
+      return data;
+    })
+    .catch((err) => {
+      console.error(err);
+      throw err;
+    });
 }
 
 function renderAppointments() {

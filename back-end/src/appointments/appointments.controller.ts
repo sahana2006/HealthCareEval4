@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Param,
   Post,
   Put,
@@ -19,10 +20,15 @@ import {
 export class AppointmentsController {
   constructor(private readonly appointmentsService: AppointmentsService) {}
 
+  @Header('Cache-Control', 'no-store')
   @Roles('frontdesk')
   @Get()
-  getUpcomingAppointments() {
-    return this.appointmentsService.getUpcomingAppointments();
+  getAppointments(
+    @Query('status') status?: string,
+  ) {
+    return this.appointmentsService.listAppointments({
+      status,
+    });
   }
 
   @Roles('patient', 'frontdesk')
@@ -36,12 +42,14 @@ export class AppointmentsController {
     });
   }
 
-  @Roles('patient', 'frontdesk')
+  @Header('Cache-Control', 'no-store')
+  @Roles('patient')
   @Get('user/:userId')
   getAppointmentsByUserId(
     @Param('userId') userId: string,
     @Query('status') status?: string,
   ) {
+    console.log('Appointments API hit', userId);
     return this.appointmentsService.getAppointmentsByUserId(userId, status);
   }
 

@@ -1,5 +1,20 @@
 [
   {
+    "id": "MR1777824486123",
+    "doctorId": "DOC010",
+    "patientId": "PAT001",
+    "type": "consultation",
+    "doctorName": "Dr. Sam Johnson",
+    "specialization": "General",
+    "date": "2026-05-03",
+    "consultationNote": "High Fever",
+    "medicines": "Dolo-650",
+    "followUp": "2026-05-07",
+    "followUpDate": "2026-05-07",
+    "appointmentId": "APT1777824441104",
+    "tests": ""
+  },
+  {
     "id": "MR1777810830363",
     "doctorId": "DOC001",
     "patientId": "PAT001",

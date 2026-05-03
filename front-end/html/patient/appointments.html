@@ -164,6 +164,7 @@
     try {
       await initializeAppointmentsPage();
     } catch (_error) {
+      console.error(_error);
       showToast('Unable to load appointments from backend', 'error');
     }
   })();

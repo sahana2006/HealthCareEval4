@@ -19,6 +19,24 @@ let activeModifyId = null;
 let modifyAppointment = null;
 let appointmentRefreshTimer = null;
 
+async function fetchAppointmentsApi(url, role) {
+  const res = await fetch(url, {
+    headers: { role },
+    cache: 'no-store',
+  });
+
+  console.log(res);
+
+  const payload = await res.json().catch(() => null);
+  console.log(payload);
+
+  if (!res.ok) {
+    throw new Error('API error');
+  }
+
+  return payload;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   renderShell('appointments');
 
@@ -157,15 +175,10 @@ async function openNewAppointmentFlow() {
 }
 
 async function loadPatients() {
-  const response = await fetch(`${APPOINTMENTS_API_BASE_URL}/patients`, {
-    headers: { role: 'frontdesk' },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to load patients');
-  }
-
-  const data = await response.json();
+  const data = await fetchAppointmentsApi(
+    `${APPOINTMENTS_API_BASE_URL}/patients`,
+    'frontdesk',
+  );
   allPatients = data.map((patient) => ({
     ...patient,
     id: patient.userId,
@@ -176,16 +189,10 @@ async function loadPatients() {
 }
 
 async function loadDoctors() {
-  const response = await fetch(`${APPOINTMENTS_API_BASE_URL}/doctors`, {
-    headers: { role: 'frontdesk' },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to load doctors');
-  }
-
-  const payload = await response.json();
+  const payload = await fetchAppointmentsApi(
+    `${APPOINTMENTS_API_BASE_URL}/doctors`,
+    'frontdesk',
+  );
   console.log('GET /doctors response (frontdesk appointments):', payload);
   allDoctors = payload.map(normalizeDoctor);
   allSpecialties = [...new Set(allDoctors.map((doctor) => doctor.specialization))]
@@ -207,15 +214,10 @@ function normalizeDoctor(doctor) {
 }
 
 async function loadUpcomingAppointments() {
-  const response = await fetch(`${APPOINTMENTS_API_BASE_URL}/appointments`, {
-    headers: { role: 'frontdesk' },
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to load appointments');
-  }
-
-  appointments = await response.json();
+  appointments = await fetchAppointmentsApi(
+    `${APPOINTMENTS_API_BASE_URL}/appointments`,
+    'frontdesk',
+  );
 }
 
 function goToStep(step) {

@@ -27,6 +27,12 @@ export type UpdateAppointmentInput = {
   slot?: string;
 };
 
+export type ListAppointmentsInput = {
+  userId?: string;
+  doctorId?: string;
+  status?: string;
+};
+
 const APPOINTMENTS_DATA_FILE = join(
   __dirname,
   '..',
@@ -37,32 +43,7 @@ const APPOINTMENTS_DATA_FILE = join(
 
 @Injectable()
 export class AppointmentsService {
-  private appointments: Appointment[] = [
-    {
-      id: 'APT001',
-      userId: 'PAT001',
-      doctorId: 'DOC003',
-      date: '2026-03-01',
-      slot: '10:00',
-      status: 'completed',
-    },
-    {
-      id: 'APT002',
-      userId: 'PAT001',
-      doctorId: 'DOC002',
-      date: '2026-04-01',
-      slot: '11:00',
-      status: 'completed',
-    },
-    {
-      id: 'APT003',
-      userId: 'PAT001',
-      doctorId: 'DOC008',
-      date: '2026-05-02',
-      slot: '10:30',
-      status: 'upcoming',
-    },
-  ];
+  private appointments: Appointment[] = []; 
 
   constructor(
     private readonly doctorsService: DoctorsService,
@@ -158,6 +139,33 @@ export class AppointmentsService {
       .map((appointment) => this.toAppointmentDetails(appointment));
   }
 
+  listAppointments(input: ListAppointmentsInput = {}) {
+    const normalizedStatus =
+      input.status === 'upcoming' || input.status === 'completed'
+        ? input.status
+        : undefined;
+    const normalizedUserId = input.userId?.trim();
+    const normalizedDoctorId = input.doctorId?.trim();
+
+    return this.appointments
+      .filter((appointment) => {
+        if (normalizedUserId && appointment.userId !== normalizedUserId) {
+          return false;
+        }
+
+        if (normalizedDoctorId && appointment.doctorId !== normalizedDoctorId) {
+          return false;
+        }
+
+        if (normalizedStatus && appointment.status !== normalizedStatus) {
+          return false;
+        }
+
+        return true;
+      })
+      .map((appointment) => this.toAppointmentDetails(appointment));
+  }
+
   getAppointmentsByUserId(userId: string, status?: string) {
     const normalizedStatus =
       status === 'upcoming' || status === 'completed' ? status : undefined;
@@ -183,9 +191,7 @@ export class AppointmentsService {
   }
 
   getAppointmentsByDoctorId(doctorId: string) {
-    return this.appointments
-      .filter((appointment) => appointment.doctorId === doctorId)
-      .map((appointment) => this.toAppointmentDetails(appointment));
+    return this.listAppointments({ doctorId });
   }
 
   hasUpcomingAppointment(
