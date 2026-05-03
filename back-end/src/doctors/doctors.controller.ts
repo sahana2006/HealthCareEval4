@@ -9,15 +9,14 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { AppointmentsService } from '../appointments/appointments.service';
-import {
-  CreateSlotBlockInput,
-  DoctorsService,
-} from './doctors.service';
-import type { CreateDoctorInput, UpdateDoctorInput } from './doctors.service';
+import { DoctorsService } from './doctors.service';
+import { CreateDoctorDto, UpdateDoctorDto, CreateSlotBlockDto, MarkUnavailableDateDto } from './dto/doctors.dto';
 
 @ApiTags('Doctors')
 @ApiHeader({
@@ -26,6 +25,7 @@ import type { CreateDoctorInput, UpdateDoctorInput } from './doctors.service';
   required: true,
 })
 @Controller('doctors')
+@UseGuards(RolesGuard)
 export class DoctorsController {
   constructor(
     private readonly doctorsService: DoctorsService,
@@ -49,7 +49,8 @@ export class DoctorsController {
   @ApiResponse({ status: 400, description: 'Invalid input or duplicate email' })
   @Roles('admin')
   @Post()
-  addDoctor(@Body() body: CreateDoctorInput) {
+  @ApiBody({ type: CreateDoctorDto })
+  addDoctor(@Body() body: CreateDoctorDto) {
     return this.doctorsService.createDoctor({
       name: body.name?.trim() ?? '',
       email: body.email?.trim() ?? '',
@@ -73,7 +74,8 @@ export class DoctorsController {
   @ApiResponse({ status: 404, description: 'Doctor not found' })
   @Roles('admin')
   @Put(':userId')
-  updateDoctor(@Param('userId') userId: string, @Body() body: UpdateDoctorInput) {
+  @ApiBody({ type: UpdateDoctorDto })
+  updateDoctor(@Param('userId') userId: string, @Body() body: UpdateDoctorDto) {
     return this.doctorsService.updateDoctor(userId, {
       name: body.name?.trim(),
       email: body.email?.trim(),
@@ -153,24 +155,14 @@ export class DoctorsController {
 
   @ApiOperation({ summary: 'Block a specific time slot on a date for a doctor' })
   @ApiParam({ name: 'doctorId', description: 'Doctor ID' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['date', 'slot'],
-      properties: {
-        date: { type: 'string', example: '2026-05-10', description: 'ISO date YYYY-MM-DD' },
-        slot: { type: 'string', example: '10:00', description: 'Time slot in HH:MM (24-hour)' },
-        reason: { type: 'string', example: 'Personal leave', description: 'Optional reason for blocking' },
-      },
-    },
-  })
+  @ApiBody({ type: CreateSlotBlockDto })
   @ApiResponse({ status: 201, description: 'SlotBlock record created' })
   @ApiResponse({ status: 400, description: 'Slot already blocked / invalid slot / date fully unavailable' })
   @Roles('doctor')
   @Post(':doctorId/slot-blocks')
   blockSlot(
     @Param('doctorId') doctorId: string,
-    @Body() body: Partial<CreateSlotBlockInput>,
+    @Body() body: CreateSlotBlockDto,
   ) {
     const date = body.date?.trim() ?? '';
     const slot = body.slot?.trim() ?? '';
@@ -218,22 +210,14 @@ export class DoctorsController {
 
   @ApiOperation({ summary: 'Mark an entire date as unavailable for a doctor' })
   @ApiParam({ name: 'doctorId', description: 'Doctor ID' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['date'],
-      properties: {
-        date: { type: 'string', example: '2026-05-15', description: 'ISO date YYYY-MM-DD' },
-      },
-    },
-  })
+  @ApiBody({ type: MarkUnavailableDateDto })
   @ApiResponse({ status: 201, description: 'UnavailableDate record created' })
   @ApiResponse({ status: 400, description: 'Date already marked unavailable' })
   @Roles('doctor')
   @Post(':doctorId/unavailable-dates')
   markDateUnavailable(
     @Param('doctorId') doctorId: string,
-    @Body() body: { date?: string },
+    @Body() body: MarkUnavailableDateDto,
   ) {
     const date = body.date?.trim() ?? '';
 

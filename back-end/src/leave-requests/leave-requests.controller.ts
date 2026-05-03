@@ -5,10 +5,13 @@ import {
   Param,
   Post,
   Put,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiHeader, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { LeaveRequestsService } from './leave-requests.service';
+import { CreateLeaveRequestDto, UpdateLeaveRequestStatusDto } from './dto/leave-requests.dto';
 
 @ApiTags('Leave Requests')
 @ApiHeader({
@@ -17,26 +20,16 @@ import { LeaveRequestsService } from './leave-requests.service';
   required: true,
 })
 @Controller('leave-requests')
+@UseGuards(RolesGuard)
 export class LeaveRequestsController {
   constructor(private readonly leaveRequestsService: LeaveRequestsService) {}
 
   @ApiOperation({ summary: 'Create a new leave request (Doctor)' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['doctorId', 'date'],
-      properties: {
-        doctorId: { type: 'string', example: 'DOC001' },
-        date: { type: 'string', example: '2026-05-10', description: 'ISO date' },
-        type: { type: 'string', example: 'Casual', description: 'Type of leave' },
-        reason: { type: 'string', example: 'Personal', description: 'Optional reason' },
-      },
-    },
-  })
+  @ApiBody({ type: CreateLeaveRequestDto })
   @ApiResponse({ status: 201, description: 'Leave request created' })
   @Roles('doctor')
   @Post()
-  createLeaveRequest(@Body() body: { doctorId: string; date: string; type?: string; reason?: string }) {
+  createLeaveRequest(@Body() body: CreateLeaveRequestDto) {
     return this.leaveRequestsService.createLeaveRequest(
       body.doctorId,
       body.date,
@@ -55,21 +48,13 @@ export class LeaveRequestsController {
 
   @ApiOperation({ summary: 'Update leave request status (Admin)' })
   @ApiParam({ name: 'id', description: 'Leave Request ID' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['status'],
-      properties: {
-        status: { type: 'string', enum: ['approved', 'rejected'] },
-      },
-    },
-  })
+  @ApiBody({ type: UpdateLeaveRequestStatusDto })
   @ApiResponse({ status: 200, description: 'Status updated successfully' })
   @Roles('admin')
   @Put(':id')
   updateRequestStatus(
     @Param('id') id: string,
-    @Body() body: { status: 'approved' | 'rejected' },
+    @Body() body: UpdateLeaveRequestStatusDto,
   ) {
     return this.leaveRequestsService.updateRequestStatus(id, body.status);
   }

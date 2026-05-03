@@ -1,14 +1,14 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { ApiOperation, ApiParam, ApiResponse, ApiTags, ApiHeader, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
+import { RolesGuard } from '../common/guards/roles.guard';
 import { FrontdeskService } from './frontdesk.service';
-import type {
-  CreateFrontdeskInput,
-  UpdateFrontdeskInput,
-} from './frontdesk.service';
+import { CreateFrontdeskDto, UpdateFrontdeskDto } from './dto/frontdesk.dto';
 
 @ApiTags('Frontdesk')
+@ApiHeader({ name: 'role', required: false, description: 'User role (admin, doctor, patient, frontdesk)' })
 @Controller('frontdesk')
+@UseGuards(RolesGuard)
 export class FrontdeskController {
   constructor(private readonly frontdeskService: FrontdeskService) {}
 
@@ -31,15 +31,16 @@ export class FrontdeskController {
   }
 
   @ApiOperation({ summary: 'Add frontdesk staff and create login user' })
+  @ApiBody({ type: CreateFrontdeskDto })
   @ApiResponse({ status: 201, description: 'Frontdesk profile created' })
   @ApiResponse({ status: 400, description: 'Invalid input or duplicate email' })
   @Roles('admin')
   @Post()
-  addFrontdesk(@Body() body: CreateFrontdeskInput) {
+  addFrontdesk(@Body() body: CreateFrontdeskDto) {
     return this.frontdeskService.createFrontdesk({
-      name: body.name?.trim() ?? '',
-      email: body.email?.trim() ?? '',
-      password: body.password ?? '',
+      name: body.name.trim(),
+      email: body.email.trim(),
+      password: body.password,
       phone: body.phone?.trim(),
       gender: body.gender?.trim(),
       reportingManagerId: body.reportingManagerId?.trim(),
@@ -52,13 +53,14 @@ export class FrontdeskController {
 
   @ApiOperation({ summary: 'Edit frontdesk staff by userId' })
   @ApiParam({ name: 'userId', description: 'Frontdesk user ID (e.g. FD001)' })
+  @ApiBody({ type: UpdateFrontdeskDto })
   @ApiResponse({ status: 200, description: 'Frontdesk profile updated' })
   @ApiResponse({ status: 404, description: 'Frontdesk profile not found' })
   @Roles('admin')
   @Put(':userId')
   updateFrontdesk(
     @Param('userId') userId: string,
-    @Body() body: UpdateFrontdeskInput,
+    @Body() body: UpdateFrontdeskDto,
   ) {
     return this.frontdeskService.updateFrontdesk(userId, {
       name: body.name?.trim(),
@@ -73,3 +75,4 @@ export class FrontdeskController {
     });
   }
 }
+

@@ -1,10 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
+import { writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
+
+  // Enable global validation using class-validator
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+  }));
 
   // ── Swagger / OpenAPI setup ────────────────────────────────
   const swaggerConfig = new DocumentBuilder()
@@ -26,6 +35,15 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
     customSiteTitle: 'MEDBITS API Docs',
   });
+
+  // Export Swagger JSON
+  const docsDir = join(process.cwd(), 'docs');
+  try {
+    mkdirSync(docsDir, { recursive: true });
+    writeFileSync(join(docsDir, 'swagger.json'), JSON.stringify(document, null, 2));
+  } catch (err) {
+    console.error('Error writing swagger.json', err);
+  }
 
   await app.listen(process.env.PORT ?? 3000);
   console.log(`Application running on http://localhost:3000`);

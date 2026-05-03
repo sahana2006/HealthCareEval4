@@ -1,35 +1,45 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiHeader, ApiBody } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
-import {
-  CreateMedicalRecordInput,
-  MedicalRecordsService,
-} from './medical-records.service';
+import { RolesGuard } from '../common/guards/roles.guard';
+import { MedicalRecordsService } from './medical-records.service';
+import { CreateMedicalRecordDto } from './dto/medical-records.dto';
 
+@ApiTags('Medical Records')
+@ApiHeader({ name: 'role', required: false, description: 'User role (admin, doctor, patient, frontdesk)' })
 @Controller('medical-records')
+@UseGuards(RolesGuard)
 export class MedicalRecordsController {
   constructor(private readonly medicalRecordsService: MedicalRecordsService) {}
 
-  @Roles('doctor')
+  @Roles('doctor', 'admin')
   @Get('doctor/:doctorId')
+  @ApiOperation({ summary: 'Get medical records by doctor ID' })
+  @ApiResponse({ status: 200, description: 'List of doctor medical records' })
   getRecordsByDoctorId(@Param('doctorId') doctorId: string) {
     return this.medicalRecordsService.getRecordsByDoctorId(doctorId);
   }
 
-  @Roles('patient', 'doctor')
+  @Roles('patient', 'doctor', 'admin')
   @Get(':patientId')
+  @ApiOperation({ summary: 'Get medical records by patient ID' })
+  @ApiResponse({ status: 200, description: 'List of patient medical records' })
   getRecordsByPatientId(@Param('patientId') patientId: string) {
     return this.medicalRecordsService.getRecordsByPatientId(patientId);
   }
 
   @Roles('doctor')
   @Post()
-  createRecord(@Body() body: Partial<CreateMedicalRecordInput>) {
+  @ApiOperation({ summary: 'Create a new medical record' })
+  @ApiBody({ type: CreateMedicalRecordDto })
+  @ApiResponse({ status: 201, description: 'Medical record created successfully' })
+  createRecord(@Body() body: CreateMedicalRecordDto) {
     return this.medicalRecordsService.createRecord({
-      doctorId: body.doctorId?.trim() ?? '',
-      patientId: body.patientId?.trim() ?? '',
+      doctorId: body.doctorId.trim(),
+      patientId: body.patientId.trim(),
       type: body.type ?? 'consultation',
-      doctorName: body.doctorName?.trim() ?? '',
-      specialization: body.specialization?.trim() ?? '',
+      doctorName: body.doctorName.trim(),
+      specialization: body.specialization.trim(),
       date: body.date?.trim(),
       consultationNote: body.consultationNote?.trim(),
       medicines: body.medicines?.trim(),
