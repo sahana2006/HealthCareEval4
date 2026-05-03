@@ -1,9 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { UsersService } from '../users/users.service';
 
 export type Doctor = {
   id: string;
+  userId: string;
   name: string;
   specialization: string;
   department: string;
@@ -46,6 +48,24 @@ export type CreateSlotBlockInput = {
   reason?: string;
 };
 
+export type CreateDoctorInput = {
+  name: string;
+  email: string;
+  password: string;
+  specialization: string;
+  slots: string[];
+  department?: string;
+  qualification?: string;
+  experience?: number;
+  age?: number;
+  gender?: string;
+  phone?: string;
+  licenseNo?: string;
+  bio?: string;
+};
+
+export type UpdateDoctorInput = Partial<Omit<CreateDoctorInput, 'password'>>;
+
 const SLOT_BLOCKS_FILE = join(
   __dirname,
   '..',
@@ -67,6 +87,7 @@ export class DoctorsService {
   private readonly doctors: Doctor[] = [
     {
       id: 'DOC001',
+      userId: 'DOC001',
       name: 'Dr. S Madhuri',
       specialization: 'Dermatologist',
       department: 'Dermatology',
@@ -82,6 +103,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC002',
+      userId: 'DOC002',
       name: 'Dr. Ashwini Ray',
       specialization: 'Dermatologist',
       department: 'Dermatology',
@@ -97,6 +119,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC003',
+      userId: 'DOC003',
       name: 'Dr. Sarah Johnson',
       specialization: 'Cardiologist',
       department: 'Cardiology',
@@ -112,6 +135,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC004',
+      userId: 'DOC004',
       name: 'Dr. Ramesh Iyer',
       specialization: 'Cardiologist',
       department: 'Cardiology',
@@ -127,6 +151,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC005',
+      userId: 'DOC005',
       name: 'Dr. Paul Johnson',
       specialization: 'Pediatrician',
       department: 'Paediatrics',
@@ -142,6 +167,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC006',
+      userId: 'DOC006',
       name: 'Dr. Robert Wilson',
       specialization: 'Orthopedic',
       department: 'Orthopaedics',
@@ -157,6 +183,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC007',
+      userId: 'DOC007',
       name: 'Dr. Anita Gupta',
       specialization: 'Neurologist',
       department: 'Neurology',
@@ -172,6 +199,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC008',
+      userId: 'DOC008',
       name: 'Dr. Kavita Sharma',
       specialization: 'General',
       department: 'General Medicine',
@@ -187,6 +215,7 @@ export class DoctorsService {
     },
     {
       id: 'DOC009',
+      userId: 'DOC009',
       name: 'Dr. Vikram Nair',
       specialization: 'General',
       department: 'General Medicine',
@@ -207,7 +236,7 @@ export class DoctorsService {
   private slotBlocks: SlotBlock[] = [];
   private unavailableDates: UnavailableDate[] = [];
 
-  constructor() {
+  constructor(private readonly usersService: UsersService) {
     this.loadSlotBlocks();
     this.loadUnavailableDates();
   }
@@ -226,9 +255,109 @@ export class DoctorsService {
   }
 
   getDoctorById(doctorId: string): Doctor {
-    const doctor = this.doctors.find((item) => item.id === doctorId);
+    const doctor = this.doctors.find(
+      (item) => item.id === doctorId || item.userId === doctorId,
+    );
     if (!doctor) {
       throw new NotFoundException('Doctor not found');
+    }
+
+    return { ...doctor, slots: [...doctor.slots] };
+  }
+
+  createDoctor(input: CreateDoctorInput): Doctor {
+    const name = input.name?.trim();
+    const email = input.email?.trim();
+    const specialization = input.specialization?.trim();
+    const slots = this.normalizeSlots(input.slots);
+
+    if (!name || !email || !input.password || !specialization) {
+      throw new BadRequestException(
+        'name, email, password and specialization are required',
+      );
+    }
+
+    if (slots.length === 0) {
+      throw new BadRequestException('At least one slot is required');
+    }
+
+    const user = this.usersService.createDoctorUser({
+      name,
+      email,
+      password: input.password,
+    });
+
+    const doctor: Doctor = {
+      id: user.id,
+      userId: user.id,
+      name,
+      specialization,
+      department: input.department?.trim() || specialization,
+      qualification: input.qualification?.trim() || '',
+      experience: Number(input.experience) || 0,
+      age: Number(input.age) || 0,
+      gender: input.gender?.trim() || '',
+      email: user.email,
+      phone: input.phone?.trim() || '',
+      licenseNo: input.licenseNo?.trim() || '',
+      bio: input.bio?.trim() || '',
+      slots,
+    };
+
+    this.doctors.push(doctor);
+    return { ...doctor, slots: [...doctor.slots] };
+  }
+
+  updateDoctor(userId: string, input: UpdateDoctorInput): Doctor {
+    const doctor = this.doctors.find((item) => item.userId === userId);
+    if (!doctor) {
+      throw new NotFoundException('Doctor not found');
+    }
+
+    const nextName = input.name?.trim();
+    const nextEmail = input.email?.trim();
+    if (nextName || nextEmail) {
+      const user = this.usersService.updateDoctorUser(userId, {
+        name: nextName,
+        email: nextEmail,
+      });
+      doctor.name = user.name;
+      doctor.email = user.email;
+    }
+
+    if (input.specialization?.trim()) {
+      doctor.specialization = input.specialization.trim();
+    }
+    if (input.department !== undefined) {
+      doctor.department = input.department.trim();
+    }
+    if (input.qualification !== undefined) {
+      doctor.qualification = input.qualification.trim();
+    }
+    if (input.experience !== undefined) {
+      doctor.experience = Number(input.experience) || 0;
+    }
+    if (input.age !== undefined) {
+      doctor.age = Number(input.age) || 0;
+    }
+    if (input.gender !== undefined) {
+      doctor.gender = input.gender.trim();
+    }
+    if (input.phone !== undefined) {
+      doctor.phone = input.phone.trim();
+    }
+    if (input.licenseNo !== undefined) {
+      doctor.licenseNo = input.licenseNo.trim();
+    }
+    if (input.bio !== undefined) {
+      doctor.bio = input.bio.trim();
+    }
+    if (input.slots !== undefined) {
+      const slots = this.normalizeSlots(input.slots);
+      if (slots.length === 0) {
+        throw new BadRequestException('At least one slot is required');
+      }
+      doctor.slots = slots;
     }
 
     return { ...doctor, slots: [...doctor.slots] };
@@ -477,5 +606,14 @@ export class DoctorsService {
     d.setDate(d.getDate() + diff);
     d.setHours(0, 0, 0, 0);
     return d;
+  }
+
+  private normalizeSlots(slots?: string[]): string[] {
+    if (!Array.isArray(slots)) {
+      return [];
+    }
+
+    return [...new Set(slots.map((slot) => slot?.trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
   }
 }

@@ -6,12 +6,17 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiBody, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AppointmentsService } from '../appointments/appointments.service';
-import { DoctorsService, CreateSlotBlockInput } from './doctors.service';
+import {
+  CreateSlotBlockInput,
+  DoctorsService,
+} from './doctors.service';
+import type { CreateDoctorInput, UpdateDoctorInput } from './doctors.service';
 
 @ApiTags('Doctors')
 @ApiHeader({
@@ -31,17 +36,63 @@ export class DoctorsController {
   @ApiOperation({ summary: 'List all doctors, optionally filtered by specialization' })
   @ApiQuery({ name: 'specialization', required: false, description: 'Filter by specialization (e.g. Cardiologist)' })
   @ApiResponse({ status: 200, description: 'Array of doctor profiles' })
-  @Roles('patient', 'doctor', 'frontdesk')
+  @Roles('patient', 'doctor', 'frontdesk', 'admin')
   @Get()
   listDoctors(@Query('specialization') specialization?: string) {
     return this.doctorsService.findAll(specialization);
+  }
+
+  @ApiOperation({ summary: 'Add a doctor and create matching doctor login user' })
+  @ApiResponse({ status: 201, description: 'Doctor profile created' })
+  @ApiResponse({ status: 400, description: 'Invalid input or duplicate email' })
+  @Roles('admin')
+  @Post()
+  addDoctor(@Body() body: CreateDoctorInput) {
+    return this.doctorsService.createDoctor({
+      name: body.name?.trim() ?? '',
+      email: body.email?.trim() ?? '',
+      password: body.password ?? '',
+      specialization: body.specialization?.trim() ?? '',
+      slots: body.slots ?? [],
+      department: body.department?.trim(),
+      qualification: body.qualification?.trim(),
+      experience: body.experience,
+      age: body.age,
+      gender: body.gender?.trim(),
+      phone: body.phone?.trim(),
+      licenseNo: body.licenseNo?.trim(),
+      bio: body.bio?.trim(),
+    });
+  }
+
+  @ApiOperation({ summary: 'Edit a doctor profile by userId' })
+  @ApiParam({ name: 'userId', description: 'Doctor user ID (e.g. DOC001)' })
+  @ApiResponse({ status: 200, description: 'Doctor profile updated' })
+  @ApiResponse({ status: 404, description: 'Doctor not found' })
+  @Roles('admin')
+  @Put(':userId')
+  updateDoctor(@Param('userId') userId: string, @Body() body: UpdateDoctorInput) {
+    return this.doctorsService.updateDoctor(userId, {
+      name: body.name?.trim(),
+      email: body.email?.trim(),
+      specialization: body.specialization?.trim(),
+      slots: body.slots,
+      department: body.department?.trim(),
+      qualification: body.qualification?.trim(),
+      experience: body.experience,
+      age: body.age,
+      gender: body.gender?.trim(),
+      phone: body.phone?.trim(),
+      licenseNo: body.licenseNo?.trim(),
+      bio: body.bio?.trim(),
+    });
   }
 
   @ApiOperation({ summary: 'Get a single doctor profile by ID' })
   @ApiParam({ name: 'doctorId', description: 'Doctor ID (e.g. DOC001)' })
   @ApiResponse({ status: 200, description: 'Doctor profile object' })
   @ApiResponse({ status: 404, description: 'Doctor not found' })
-  @Roles('patient', 'doctor', 'frontdesk')
+  @Roles('patient', 'doctor', 'frontdesk', 'admin')
   @Get(':doctorId')
   getDoctorProfile(@Param('doctorId') doctorId: string) {
     return this.doctorsService.getDoctorById(doctorId);

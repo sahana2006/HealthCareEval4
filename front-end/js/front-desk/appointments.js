@@ -31,8 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   document.getElementById('new-appointment-btn').addEventListener('click', () => {
-    goToStep('specialty');
-    renderSpecialties(allSpecialties);
+    void openNewAppointmentFlow();
   });
 
   document
@@ -134,10 +133,27 @@ function startAppointmentsRefresh() {
 
   window.addEventListener('focus', async () => {
     try {
+      await loadDoctors();
       await loadUpcomingAppointments();
       renderUpcomingConsultations();
     } catch (_) {}
   });
+}
+
+async function openNewAppointmentFlow() {
+  try {
+    await loadDoctors();
+  } catch (error) {
+    showToast('Failed to load doctors.', 'error');
+    return;
+  }
+
+  selectedSpecialty = null;
+  selectedDoctor = null;
+  selectedSlot = null;
+  selectedDate = null;
+  goToStep('specialty');
+  renderSpecialties(allSpecialties);
 }
 
 async function loadPatients() {
@@ -168,7 +184,9 @@ async function loadDoctors() {
     throw new Error('Failed to load doctors');
   }
 
-  allDoctors = await response.json();
+  const payload = await response.json();
+  console.log('GET /doctors response (frontdesk appointments):', payload);
+  allDoctors = payload.map(normalizeDoctor);
   allSpecialties = [...new Set(allDoctors.map((doctor) => doctor.specialization))]
     .sort()
     .map((name) => ({
@@ -176,6 +194,15 @@ async function loadDoctors() {
       name,
       icon: name.toLowerCase(),
     }));
+}
+
+function normalizeDoctor(doctor) {
+  return {
+    ...doctor,
+    id: doctor.userId || doctor.id,
+    userId: doctor.userId || doctor.id,
+    slots: Array.isArray(doctor.slots) ? doctor.slots : [],
+  };
 }
 
 async function loadUpcomingAppointments() {

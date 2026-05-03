@@ -3,9 +3,10 @@
    MEDBITS Frontdesk Portal
    ============================================================ */
 
+const FRONTDESK_API_BASE_URL = 'http://localhost:3000';
+
 // --- Data Store (loaded once, shared globally) ---
 const AppState = {
-  data: null,
   currentUser: null
 };
 
@@ -15,24 +16,6 @@ const STORAGE_KEYS = {
   bookedFollowUps: 'medbits_frontdesk_booked_followups'
 };
 
-// --- Load JSON data ---
-async function loadData() {
-  if (AppState.data) return AppState.data;
-
-  try {
-    const resp = await fetch('../../js/data/data.json') 
-
-    if (!resp.ok) throw new Error('Failed to load data');
-
-    AppState.data = await resp.json();
-    return AppState.data;
-
-  } catch (e) {
-    console.error('Data load error:', e);
-    return null;
-  }
-}
-
 // --- Session management (localStorage) ---
 function getSession() {
   const raw = localStorage.getItem('user');
@@ -41,6 +24,26 @@ function getSession() {
 
 function setSession(data) {
   localStorage.setItem('user', JSON.stringify(data));
+}
+
+async function loadCurrentFrontdeskProfile() {
+  const session = getSession();
+  if (!session?.id || session.role !== 'frontdesk') return null;
+
+  const response = await fetch(
+    `${FRONTDESK_API_BASE_URL}/frontdesk/${encodeURIComponent(session.id)}`,
+    { headers: { role: 'frontdesk' } },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load frontdesk profile');
+  }
+
+  const profile = await response.json();
+  const updatedSession = { ...session, name: profile.name, email: profile.email };
+  setSession(updatedSession);
+  AppState.currentUser = profile;
+  return profile;
 }
 
 function clearSession() {
@@ -118,20 +121,7 @@ function getQueueItems() {
   const storedQueue = getStoredQueue();
   if (Array.isArray(storedQueue) && storedQueue.length > 0) return storedQueue;
 
-  const defaultQueue = AppState.data?.queue;
-  if (Array.isArray(defaultQueue) && defaultQueue.length > 0) {
-    saveQueue(defaultQueue);
-    return defaultQueue;
-  }
-
   return Array.isArray(storedQueue) ? storedQueue : [];
-}
-
-function ensureQueueStore() {
-  const storedQueue = getStoredQueue();
-  if ((!Array.isArray(storedQueue) || storedQueue.length === 0) && AppState.data?.queue?.length) {
-    saveQueue(AppState.data.queue);
-  }
 }
 
 function getBookedFollowUpIds() {
@@ -225,6 +215,15 @@ function renderShell(activePage) {
   document.getElementById('topbar-title-h1').textContent = title;
   document.getElementById('topbar-subtitle').textContent = subtitle;
   document.getElementById('topbar-username').textContent = userName;
+  loadCurrentFrontdeskProfile()
+    .then((profile) => {
+      if (profile?.name) {
+        document.getElementById('topbar-username').textContent = profile.name;
+      }
+    })
+    .catch((error) => {
+      console.error('Frontdesk shell profile load error:', error);
+    });
   setupNotifications();
 
   // Logout handler

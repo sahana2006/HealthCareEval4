@@ -35,6 +35,9 @@ function startAppointmentStatusRefresh() {
 
   window.addEventListener('focus', async () => {
     try {
+      await loadAllDoctors();
+      doctors = allDoctors;
+      renderSpecializationOptions();
       await loadUserAppointments();
       refreshApptLists();
     } catch (_) {}
@@ -52,7 +55,9 @@ async function loadAllDoctors() {
     throw new Error('Failed to load doctors');
   }
 
-  allDoctors = await response.json();
+  const payload = await response.json();
+  console.log('GET /doctors response (patient):', payload);
+  allDoctors = payload.map(normalizeDoctor);
 }
 
 async function loadDoctorsBySpecialization(specialization) {
@@ -69,7 +74,18 @@ async function loadDoctorsBySpecialization(specialization) {
     throw new Error('Failed to load doctors');
   }
 
-  doctors = await response.json();
+  const payload = await response.json();
+  console.log('GET /doctors by specialization response (patient):', payload);
+  doctors = payload.map(normalizeDoctor);
+}
+
+function normalizeDoctor(doctor) {
+  return {
+    ...doctor,
+    id: doctor.userId || doctor.id,
+    userId: doctor.userId || doctor.id,
+    slots: Array.isArray(doctor.slots) ? doctor.slots : [],
+  };
 }
 
 async function loadUserAppointments() {
@@ -102,6 +118,7 @@ function renderAppointments() {
 
 function renderSpecializationOptions() {
   const sel = document.getElementById('specSelect');
+  const currentValue = sel.value;
   const specializations = [...new Set(allDoctors.map((doctor) => doctor.specialization))];
 
   sel.innerHTML = '';
@@ -116,6 +133,10 @@ function renderSpecializationOptions() {
     opt.textContent = specialization;
     sel.appendChild(opt);
   });
+
+  if (currentValue && specializations.includes(currentValue)) {
+    sel.value = currentValue;
+  }
 }
 
 function refreshApptLists() {
@@ -167,6 +188,10 @@ function fillApptList(containerId, appointments, isPast) {
 async function filterDoctors() {
   const specialization = document.getElementById('specSelect').value;
   const section = document.getElementById('doctorSection');
+
+  await loadAllDoctors();
+  renderSpecializationOptions();
+  document.getElementById('specSelect').value = specialization;
 
   if (!specialization) {
     section.style.display = 'none';

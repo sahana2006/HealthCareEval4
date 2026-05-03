@@ -55,7 +55,14 @@ async function loadDoctors() {
     throw new Error('Failed to load doctors');
   }
 
-  allDoctors = await response.json();
+  const payload = await response.json();
+  console.log('GET /doctors response (frontdesk queue):', payload);
+  allDoctors = payload.map((doctor) => ({
+    ...doctor,
+    id: doctor.userId || doctor.id,
+    userId: doctor.userId || doctor.id,
+    slots: Array.isArray(doctor.slots) ? doctor.slots : [],
+  }));
 }
 
 async function loadAllQueueItems() {

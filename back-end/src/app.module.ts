@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { FrontdeskModule } from './frontdesk/frontdesk.module';
 import { LabTestsModule } from './labtests/labtests.module';
 import { MedicalRecordsModule } from './medical-records/medical-records.module';
 import { MedicinesModule } from './medicines/medicines.module';
@@ -27,6 +28,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     AppointmentsModule,
     QueueModule,
     FeedbackModule,
+    FrontdeskModule,
     WalkInsModule,
   ],
   controllers: [AppController],

@@ -92,8 +92,7 @@ function closeModal() {
 
 // ── TOPBAR USER ───────────────────────────────────────────────────
 // Shows the logged-in user's name and initials in the topbar.
-// Reads from the session first (real logged-in user),
-// falls back to DB.patient only if no session exists.
+// Reads only from the authenticated session.
 function updateTopbarUser() {
   const session = getSession();  // now always works — defined above
 
@@ -108,10 +107,6 @@ function updateTopbarUser() {
     const [derivedFirstName, ...rest] = session.name.trim().split(/\s+/);
     firstName = derivedFirstName || '';
     lastName = rest.join(' ');
-  } else if (typeof DB !== 'undefined' && DB.patient) {
-    // Fallback to seed data (should not normally happen on a protected page)
-    firstName = DB.patient.firstName;
-    lastName  = DB.patient.lastName;
   }
 
   const initial1 = firstName ? firstName[0].toUpperCase() : '?';

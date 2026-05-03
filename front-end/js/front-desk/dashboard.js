@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderShell('dashboard');
 
   try {
+    await loadDashboardFrontdeskProfile();
     await loadDashboardData();
     startDashboardRefresh();
   } catch (error) {
@@ -17,6 +18,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     return;
   }
 });
+
+async function loadDashboardFrontdeskProfile() {
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  if (!user?.id) {
+    throw new Error('Logged-in frontdesk user not found');
+  }
+
+  const response = await fetch(
+    `${FRONTDESK_DASHBOARD_API_BASE_URL}/frontdesk/${encodeURIComponent(user.id)}`,
+    { headers: { role: 'frontdesk' } },
+  );
+
+  if (!response.ok) {
+    throw new Error('Failed to load frontdesk profile');
+  }
+
+  const profile = await response.json();
+  localStorage.setItem('user', JSON.stringify({ ...user, name: profile.name, email: profile.email }));
+
+  const nameElement = document.getElementById('topbar-username');
+  if (nameElement) {
+    nameElement.textContent = profile.name;
+  }
+
+  return profile;
+}
 
 async function loadDashboardData() {
   const [walkins, appointments, queueItems] = await Promise.all([
