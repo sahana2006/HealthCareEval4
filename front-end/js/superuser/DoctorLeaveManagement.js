@@ -1,10 +1,35 @@
 // ============================================================
 // DATA STORE
 // ============================================================
-const leaveRequests = [];
+let leaveRequests = [];
 let activeFilter = null;
 let currentViewAll = 'approved';
 let toastTimer = null;
+const API_BASE = 'http://localhost:3000';
+const AUTH_HEADERS = { 'Content-Type': 'application/json', 'role': 'admin' };
+
+async function loadLeaveRequests() {
+    try {
+        const res = await fetch(`${API_BASE}/leave-requests`, { headers: AUTH_HEADERS });
+        if (res.ok) {
+            leaveRequests = await res.json();
+            // Map dates back to the filtering logic
+            leaveRequests = leaveRequests.map(r => ({
+                ...r,
+                startDate: r.date,
+                endDate: r.date
+            }));
+            updateCounts();
+            if (document.getElementById('page-main').classList.contains('active')) {
+                renderTable();
+            } else {
+                renderViewAll(currentViewAll);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load leave requests', e);
+    }
+}
  
 // ============================================================
 // HELPERS
@@ -77,8 +102,8 @@ function renderTable() {
             <td><span class="type-badge ${getTypeClass(r.type)}">${r.type}</span></td>
             <td>${r.reason}</td>
             <td class="actions">
-                <button class="btn btn-approve" onclick="handleAction(${r.id}, 'approved')">✓ Approve</button>
-                <button class="btn btn-reject"  onclick="handleAction(${r.id}, 'rejected')">✕ Reject</button>
+                <button class="btn btn-approve" onclick="handleAction('${r.id}', 'approved')">✓ Approve</button>
+                <button class="btn btn-reject"  onclick="handleAction('${r.id}', 'rejected')">✕ Reject</button>
             </td>
         </tr>
     `).join('');
@@ -90,30 +115,40 @@ function renderTable() {
 // APPROVE / REJECT
 // ============================================================
  
-function handleAction(id, action) {
+async function handleAction(id, action) {
     const req = leaveRequests.find(r => r.id === id);
     if (!req) return;
  
-    // Show toast immediately
-    showToast(req.name, action);
- 
-    const row = document.getElementById(`row-${id}`);
-    if (row) {
-        row.style.transition = 'opacity 0.35s, transform 0.35s';
-        row.style.opacity    = '0';
-        row.style.transform  = 'translateX(30px)';
-    }
- 
-    // Update data after animation
-    setTimeout(() => {
-        req.status     = action;
-        req.actionedOn = new Date().toLocaleString('en-US', {
-            month: 'short', day: 'numeric', year: 'numeric',
-            hour: '2-digit', minute: '2-digit'
+    try {
+        const res = await fetch(`${API_BASE}/leave-requests/${id}`, {
+            method: 'PUT',
+            headers: AUTH_HEADERS,
+            body: JSON.stringify({ status: action })
         });
-        updateCounts();
-        renderTable();
-    }, 350);
+        
+        if (!res.ok) {
+            const err = await res.json().catch(() => null);
+            alert(err?.message || 'Failed to update leave request status');
+            return;
+        }
+
+        // Show toast immediately
+        showToast(req.name, action);
+     
+        const row = document.getElementById(`row-${id}`);
+        if (row) {
+            row.style.transition = 'opacity 0.35s, transform 0.35s';
+            row.style.opacity    = '0';
+            row.style.transform  = 'translateX(30px)';
+        }
+     
+        // Update data after animation
+        setTimeout(async () => {
+            await loadLeaveRequests();
+        }, 350);
+    } catch (e) {
+        alert('Network error updating status');
+    }
 }
  
 // ============================================================
@@ -252,9 +287,8 @@ function renderViewAll(type) {
 // ============================================================
 // INIT
 // ============================================================
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
     lucide.createIcons();
-    updateCounts();
-    renderTable();
+    await loadLeaveRequests();
 });
  

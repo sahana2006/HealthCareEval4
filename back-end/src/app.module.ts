@@ -14,6 +14,7 @@ import { PatientsModule } from './patients/patients.module';
 import { QueueModule } from './queue/queue.module';
 import { UsersModule } from './users/users.module';
 import { WalkInsModule } from './walkins/walkins.module';
+import { LeaveRequestsModule } from './leave-requests/leave-requests.module';
 import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
@@ -30,6 +31,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     FeedbackModule,
     FrontdeskModule,
     WalkInsModule,
+    LeaveRequestsModule,
   ],
   controllers: [AppController],
   providers: [

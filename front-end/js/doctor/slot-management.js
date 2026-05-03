@@ -277,28 +277,23 @@
     }
 
     const res = await fetch(
-      `${API_BASE}/doctors/${DOCTOR_ID}/unavailable-dates`,
+      `${API_BASE}/leave-requests`,
       {
         method: 'POST',
         headers: AUTH_HEADERS,
-        body: JSON.stringify({ date: val }),
+        body: JSON.stringify({ doctorId: DOCTOR_ID, date: val, type: 'Casual', reason: 'Requested via portal' }),
       },
     );
     if (!res.ok) {
       const err = await res.json().catch(() => null);
-      showToast(err?.message || 'Failed to mark date', 'error');
+      showToast(err?.message || 'Failed to submit leave request', 'error');
       return;
     }
 
     const d = new Date(`${val}T00:00:00`);
     const label = d.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    showToast(`${label} marked as unavailable`, 'success');
+    showToast(`Leave request for ${label} submitted to admin`, 'success');
     input.value = '';
-
-    await loadUnavailableDates();
-    renderUnavailableTags();
-    if (currentDate === val) await renderSlots();
-    await renderWeeklyOverview();
   });
 
   // ── Weekly Overview ────────────────────────────────────────
