@@ -1,5 +1,31 @@
 [
   {
+    "id": "MR1777869755959",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "treatment",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "General",
+    "date": "2026-05-04",
+    "appointmentId": "APT1777824093306",
+    "lifestyle": "Better sleep",
+    "diet": "Eatwell",
+    "duration": "2 w"
+  },
+  {
+    "id": "MR1777869706924",
+    "doctorId": "DOC001",
+    "patientId": "PAT001",
+    "type": "consultation",
+    "doctorName": "Dr. S Madhuri",
+    "specialization": "General",
+    "date": "2026-05-06",
+    "consultationNote": "Nothing",
+    "medicines": "woekjfs",
+    "appointmentId": "APT1777824093306",
+    "tests": "slefkn"
+  },
+  {
     "id": "MR1777824486123",
     "doctorId": "DOC010",
     "patientId": "PAT001",

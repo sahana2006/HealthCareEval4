@@ -59,7 +59,7 @@ async function loadDashboardData() {
 
   const activeQueueItems = queueItems.filter((item) => item.status !== 'done');
   const waitingItems = queueItems.filter((item) => item.status === 'waiting').slice(0, 4);
-  const consultItems = queueItems.filter((item) => item.status === 'in-progress').slice(0, 4);
+  const consultItems = queueItems.filter((item) => item.status === 'in-consultation').slice(0, 4);
 
   document.getElementById('stat-walkins').textContent = walkins.length;
   document.getElementById('stat-appointments').textContent = appointments.length;

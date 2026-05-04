@@ -16,7 +16,7 @@
   const historyList = document.getElementById('historyList');
   const historyTitle = document.getElementById('historyModalTitle');
   const errorBanner = document.getElementById('planErrorBanner');
-  const formFieldIds = ['medicines', 'tests', 'lifestyle', 'diet', 'duration'];
+  const formFieldIds = ['lifestyle', 'diet', 'duration'];
 
   let appointments = [];
   let selectedAppointment = null;
@@ -82,8 +82,6 @@
   /* ── Form helpers ── */
   function collectPlanValues() {
     return {
-      medicines: document.getElementById('medicines').value.trim(),
-      tests: document.getElementById('tests').value.trim(),
       lifestyle: document.getElementById('lifestyle').value.trim(),
       diet: document.getElementById('diet').value.trim(),
       duration: document.getElementById('duration').value.trim(),
@@ -156,8 +154,8 @@
       });
       if (!response.ok) throw new Error('Unable to load appointments');
       const data = await response.json();
-      // Show upcoming appointments for creating treatment plans
-      appointments = data.filter(apt => apt.status === 'upcoming');
+      // Show completed appointments for creating treatment plans
+      appointments = data.filter(apt => apt.status === 'completed');
     } catch (_) {
       appointments = [];
     }
@@ -177,7 +175,7 @@
 
     if (!matches.length) {
       appointmentSearchResults.innerHTML =
-        '<button type="button" class="appointment-search-option empty" disabled>No upcoming appointments found</button>';
+        '<button type="button" class="appointment-search-option empty" disabled>No completed appointments found</button>';
       appointmentSearchResults.classList.add('open');
       return;
     }
@@ -189,7 +187,7 @@
       btn.className = 'appointment-search-option';
       btn.innerHTML = `
         <span><strong>${patient.name}</strong><small>${apt.id} | ${formatDisplayDate(apt.date)} | ${apt.slot}</small></span>
-        <span class="apt-status-tag">${apt.status || 'upcoming'}</span>`;
+        <span class="apt-status-tag">${apt.status || 'completed'}</span>`;
       btn.addEventListener('click', () => selectAppointment(apt));
       appointmentSearchResults.appendChild(btn);
     });
@@ -269,8 +267,6 @@
             doctorName,
             specialization,
             date: new Date().toISOString().split('T')[0],
-            medicines: plan.medicines,
-            tests: plan.tests,
             lifestyle: plan.lifestyle,
             diet: plan.diet,
             duration: plan.duration,
@@ -322,8 +318,6 @@
               <span style="font-size:.78rem;color:var(--text-muted);">${plan.date || 'Unknown date'}</span>
             </div>
             ${plan.appointmentId ? `<div class="hist-row"><strong>Appointment:</strong> ${plan.appointmentId}</div>` : ''}
-            ${plan.medicines ? `<div class="hist-row"><strong>Medicines:</strong> ${plan.medicines}</div>` : ''}
-            ${plan.tests ? `<div class="hist-row"><strong>Tests:</strong> ${plan.tests}</div>` : ''}
             ${plan.lifestyle ? `<div class="hist-row"><strong>Lifestyle:</strong> ${plan.lifestyle}</div>` : ''}
             ${plan.diet ? `<div class="hist-row"><strong>Diet:</strong> ${plan.diet}</div>` : ''}
             ${plan.duration ? `<div class="hist-row"><strong>Duration:</strong> ${plan.duration}</div>` : ''}`;

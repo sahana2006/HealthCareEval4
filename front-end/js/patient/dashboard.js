@@ -170,7 +170,7 @@ function renderQueueStatus() {
 
   const currentQueue = dashboardQueueItems[0];
   const nowServing = dashboardDoctorQueueItems.find(
-    (item) => item.status === 'in-progress',
+    (item) => item.status === 'in-consultation',
   );
 
   container.innerHTML = `
@@ -181,7 +181,7 @@ function renderQueueStatus() {
         <div class="dash-item-sub">Now Serving: ${nowServing ? `#${nowServing.tokenNumber}` : 'Not started yet'}</div>
       </div>
       <div class="dash-item-meta">
-        <span class="badge ${currentQueue.status === 'in-progress' ? 'badge-green' : 'badge-orange'}">${currentQueue.status}</span>
+        <span class="badge ${currentQueue.status === 'in-consultation' ? 'badge-green' : 'badge-orange'}">${currentQueue.status}</span>
       </div>
     </div>
   `;
