@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
 export type PatientProfile = {
   userId: string;
@@ -13,6 +13,7 @@ export type PatientProfile = {
 };
 
 export type UpdatePatientProfileInput = Omit<PatientProfile, 'userId'>;
+export type CreatePatientProfileInput = Omit<PatientProfile, 'userId'>;
 
 @Injectable()
 export class PatientsService {
@@ -81,6 +82,37 @@ export class PatientsService {
     return { ...profile };
   }
 
+  createPatient(input: CreatePatientProfileInput): PatientProfile {
+    const normalizedPatient: PatientProfile = {
+      userId: this.generateNextPatientId(),
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      dob: input.dob.trim(),
+      gender: input.gender.trim(),
+      bloodGroup: input.bloodGroup.trim(),
+      phone: input.phone.trim(),
+      email: input.email.trim().toLowerCase(),
+      guardianName: input.guardianName.trim(),
+    };
+
+    if (
+      !normalizedPatient.firstName ||
+      !normalizedPatient.lastName ||
+      !normalizedPatient.dob ||
+      !normalizedPatient.gender ||
+      !normalizedPatient.bloodGroup ||
+      !normalizedPatient.phone ||
+      !normalizedPatient.email
+    ) {
+      throw new BadRequestException(
+        'firstName, lastName, dob, gender, bloodGroup, phone and email are required',
+      );
+    }
+
+    this.patients.push(normalizedPatient);
+    return { ...normalizedPatient };
+  }
+
   updatePatientByUserId(
     userId: string,
     updates: UpdatePatientProfileInput,
@@ -98,5 +130,14 @@ export class PatientsService {
 
     this.patients[patientIndex] = nextPatient;
     return { ...nextPatient };
+  }
+
+  private generateNextPatientId(): string {
+    const patientIds = this.patients
+      .map((item) => Number.parseInt(item.userId.replace('PAT', ''), 10))
+      .filter((value) => Number.isFinite(value));
+
+    const nextNumber = (patientIds.length ? Math.max(...patientIds) : 0) + 1;
+    return `PAT${nextNumber.toString().padStart(3, '0')}`;
   }
 }

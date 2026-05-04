@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { PatientsService } from '../patients/patients.service';
 
 export type WalkIn = {
   id: string;
@@ -17,6 +18,8 @@ export type CreateWalkInInput = Omit<WalkIn, 'id' | 'createdAt'>;
 
 @Injectable()
 export class WalkInsService {
+  constructor(private readonly patientsService: PatientsService) {}
+
   private readonly walkins: WalkIn[] = [
     {
       id: 'WALKIN004',
@@ -98,6 +101,17 @@ export class WalkInsService {
       );
     }
 
+    const patient = this.patientsService.createPatient({
+      firstName: normalizedInput.firstName,
+      lastName: normalizedInput.lastName,
+      email: normalizedInput.email,
+      phone: normalizedInput.phone,
+      dob: this.toIsoDate(normalizedInput.dob),
+      gender: normalizedInput.gender,
+      bloodGroup: normalizedInput.bloodGroup,
+      guardianName: normalizedInput.guardianName,
+    });
+
     const nextId = this.generateNextId();
     const walkin: WalkIn = {
       id: nextId,
@@ -106,7 +120,14 @@ export class WalkInsService {
     };
 
     this.walkins.unshift(walkin);
-    return { ...walkin };
+    return {
+      ...walkin,
+      id: patient.userId,
+      userId: patient.userId,
+      patientId: patient.userId,
+      registrationId: walkin.id,
+      name: `${patient.firstName} ${patient.lastName}`.trim(),
+    } as WalkIn;
   }
 
   private generateNextId(): string {
@@ -116,5 +137,14 @@ export class WalkInsService {
 
     const nextNumber = (idNumbers.length ? Math.max(...idNumbers) : 0) + 1;
     return `WALKIN${nextNumber.toString().padStart(3, '0')}`;
+  }
+
+  private toIsoDate(dob: string): string {
+    const [day, month, year] = dob.split('-').map((value) => value.trim());
+    if (!day || !month || !year) {
+      return dob;
+    }
+
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
 }

@@ -94,7 +94,7 @@ async function handleRegister() {
       throw new Error(payload?.message || 'Failed to create walk-in registration');
     }
 
-    setSelectedPatient(payload);
+    setSelectedPatient(normalizeRegisteredPatient(payload));
     clearForm();
     await refreshWalkIns();
     openSuccessModal(payload);
@@ -179,10 +179,11 @@ function openRegistrationDetail(patient) {
   const container = document.getElementById('registration-detail-body');
   const modal = document.getElementById('registration-detail-modal');
   const age = calculateAge(patient.dob);
+  const registrationLabel = patient.registrationId || patient.id;
 
   container.innerHTML = `
     <div class="modal-success-row"><span>Patient Name</span><span>${patient.firstName} ${patient.lastName}</span></div>
-    <div class="modal-success-row"><span>Registration ID</span><span>${patient.id}</span></div>
+    <div class="modal-success-row"><span>Registration ID</span><span>${registrationLabel}</span></div>
     <div class="modal-success-row"><span>Age &amp; Gender</span><span>${age} ${patient.gender}</span></div>
     <div class="modal-success-row"><span>Email</span><span>${patient.email || '-'}</span></div>
     <div class="modal-success-row"><span>Phone Number</span><span>${patient.phone}</span></div>
@@ -195,15 +196,41 @@ function openRegistrationDetail(patient) {
 
 function openSuccessModal(patient) {
   const age = calculateAge(patient.dob);
+  const registrationLabel = patient.registrationId || patient.id;
 
   document.getElementById('modal-success-body').innerHTML = `
     <div class="modal-success-row"><span>Patient Name</span><span>${patient.firstName} ${patient.lastName}</span></div>
-    <div class="modal-success-row"><span>Registration ID</span><span>${patient.id}</span></div>
+    <div class="modal-success-row"><span>Registration ID</span><span>${registrationLabel}</span></div>
     <div class="modal-success-row"><span>Age &amp; Gender</span><span>${age} ${patient.gender}</span></div>
     <div class="modal-success-row"><span>Phone Number</span><span>${patient.phone}</span></div>
     <div class="modal-success-row"><span>Blood Group</span><span>${patient.bloodGroup}</span></div>
   `;
   document.getElementById('success-modal').classList.remove('hidden');
+}
+
+function normalizeRegisteredPatient(patient) {
+  const userId = patient.userId || patient.patientId || patient.id;
+
+  return {
+    ...patient,
+    id: userId,
+    userId,
+    patientId: userId,
+    name:
+      patient.name ||
+      `${patient.firstName || ''} ${patient.lastName || ''}`.trim() ||
+      userId,
+    dob: normalizeDobToIso(patient.dob),
+  };
+}
+
+function normalizeDobToIso(dob) {
+  if (!dob) return dob;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) return dob;
+
+  const [day, month, year] = dob.split('-');
+  if (!day || !month || !year) return dob;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
 }
 
 function clearForm() {
@@ -222,8 +249,16 @@ function closeModal() {
 
 function calculateAge(dob) {
   if (!dob) return '';
-  const [d, m, y] = dob.split('-').map(Number);
-  const birth = new Date(y, m - 1, d);
+  let birth;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    birth = new Date(`${dob}T00:00:00`);
+  } else {
+    const [d, m, y] = dob.split('-').map(Number);
+    birth = new Date(y, m - 1, d);
+  }
+
+  if (Number.isNaN(birth.getTime())) return '';
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();

@@ -72,6 +72,39 @@
       }
     },
     "/patients": {
+      "post": {
+        "operationId": "PatientsController_createPatient",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "header",
+            "description": "User role (admin, doctor, patient, frontdesk)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePatientDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Patient profile created successfully"
+          }
+        },
+        "summary": "Create a patient profile",
+        "tags": [
+          "Patients"
+        ]
+      },
       "get": {
         "operationId": "PatientsController_getAllPatients",
         "parameters": [
@@ -2385,6 +2418,52 @@
         "required": [
           "email",
           "password"
+        ]
+      },
+      "CreatePatientDto": {
+        "type": "object",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "dob": {
+            "type": "string",
+            "example": "1990-01-01"
+          },
+          "gender": {
+            "type": "string",
+            "example": "Male"
+          },
+          "bloodGroup": {
+            "type": "string",
+            "example": "O+"
+          },
+          "phone": {
+            "type": "string",
+            "example": "9876543210"
+          },
+          "email": {
+            "type": "string",
+            "example": "john.doe@example.com"
+          },
+          "guardianName": {
+            "type": "string",
+            "example": "Jane Doe"
+          }
+        },
+        "required": [
+          "firstName",
+          "lastName",
+          "dob",
+          "gender",
+          "bloodGroup",
+          "phone",
+          "email"
         ]
       },
       "UpdatePatientProfileDto": {

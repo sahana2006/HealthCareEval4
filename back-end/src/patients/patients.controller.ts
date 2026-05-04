@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Post,
   Put,
   UseGuards,
 } from '@nestjs/common';
@@ -12,7 +13,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import {
   PatientsService,
 } from './patients.service';
-import { UpdatePatientProfileDto } from './dto/patients.dto';
+import { CreatePatientDto, UpdatePatientProfileDto } from './dto/patients.dto';
 
 @ApiTags('Patients')
 @ApiHeader({ name: 'role', required: false, description: 'User role (admin, doctor, patient, frontdesk)' })
@@ -21,12 +22,37 @@ import { UpdatePatientProfileDto } from './dto/patients.dto';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  @Roles('frontdesk', 'admin')
+  @Post()
+  @ApiOperation({ summary: 'Create a patient profile' })
+  @ApiBody({ type: CreatePatientDto })
+  @ApiResponse({ status: 201, description: 'Patient profile created successfully' })
+  createPatient(@Body() body: CreatePatientDto) {
+    const patient = this.patientsService.createPatient({
+      firstName: body.firstName.trim(),
+      lastName: body.lastName.trim(),
+      dob: body.dob.trim(),
+      gender: body.gender.trim(),
+      bloodGroup: body.bloodGroup.trim(),
+      phone: body.phone.trim(),
+      email: body.email.trim(),
+      guardianName: body.guardianName?.trim() ?? '',
+    });
+
+    return {
+      ...patient,
+      id: patient.userId,
+      name: `${patient.firstName} ${patient.lastName}`.trim(),
+    };
+  }
+
   @Roles('doctor', 'frontdesk', 'admin')
   @Get()
   @ApiOperation({ summary: 'Get all patients' })
   @ApiResponse({ status: 200, description: 'List of all patients' })
   getAllPatients() {
-    return this.patientsService.getAllPatients();
+    const patients = this.patientsService.getAllPatients();
+    return patients || [];
   }
 
   @Roles('patient', 'doctor', 'frontdesk', 'admin')

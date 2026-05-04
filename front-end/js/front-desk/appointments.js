@@ -131,7 +131,7 @@ async function initializeAppointmentsPage() {
   if (savedPatient?.userId) {
     const currentPatient =
       allPatients.find((patient) => patient.userId === savedPatient.userId) ||
-      savedPatient;
+      upsertPatientRecord(savedPatient);
     showSelectedPatient(currentPatient);
   }
 
@@ -179,13 +179,39 @@ async function loadPatients() {
     `${APPOINTMENTS_API_BASE_URL}/patients`,
     'frontdesk',
   );
-  allPatients = data.map((patient) => ({
+  allPatients = data.map(normalizePatientRecord);
+}
+
+function normalizePatientRecord(patient) {
+  const userId = patient.userId || patient.id || patient.patientId;
+
+  return {
     ...patient,
-    id: patient.userId,
-    patientId: patient.userId,
+    id: userId,
+    userId,
+    patientId: userId,
+    name:
+      patient.name ||
+      `${patient.firstName || ''} ${patient.lastName || ''}`.trim() ||
+      userId,
     guardian: patient.guardianName,
     age: calculateAgeFromIso(patient.dob),
-  }));
+  };
+}
+
+function upsertPatientRecord(patient) {
+  const normalizedPatient = normalizePatientRecord(patient);
+  const existingIndex = allPatients.findIndex(
+    (currentPatient) => currentPatient.userId === normalizedPatient.userId,
+  );
+
+  if (existingIndex === -1) {
+    allPatients.unshift(normalizedPatient);
+  } else {
+    allPatients[existingIndex] = normalizedPatient;
+  }
+
+  return normalizedPatient;
 }
 
 async function loadDoctors() {
