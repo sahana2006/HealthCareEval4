@@ -61,12 +61,31 @@ async function loadFollowUps() {
     doctorNote: record.consultationNote || 'No consultation notes entered.',
     followUpDate: record.followUpDate,
     lastVisit: record.date,
+    isReferral: false,
   }));
+
+  const referrals = JSON.parse(localStorage.getItem('referralHistory') || '[]');
+  referrals.forEach((ref, index) => {
+    if (ref.status === 'Pending') {
+      followUps.push({
+        id: `ref-${index}`,
+        patientId: ref.patientId || 'PAT001',
+        doctorId: ref.doctorId || 'DOC002',
+        patientName: ref.patient,
+        patientPhone: '',
+        doctorName: ref.doctor,
+        doctorNote: ref.reason || 'Referral reason not provided.',
+        followUpDate: ref.date || new Date().toISOString().split('T')[0],
+        lastVisit: ref.date,
+        isReferral: true,
+      });
+    }
+  });
 }
 
-function renderFollowUps(items) {
-  const container = document.getElementById('followup-list');
-  const empty = document.getElementById('followup-empty');
+function renderList(items, containerId, emptyId) {
+  const container = document.getElementById(containerId);
+  const empty = document.getElementById(emptyId);
 
   if (!items.length) {
     container.innerHTML = '';
@@ -81,20 +100,16 @@ function renderFollowUps(items) {
         <div class="followup-card followup-card--medium">
           <div class="followup-card-top">
             <div class="followup-patient-name">${item.patientName}</div>
-            <div class="followup-doctor-info">${item.doctorName}</div>
-            <div class="followup-last-visit">Last Visit: ${formatDisplayDate(item.lastVisit)}</div>
+            <div class="followup-doctor-info">${item.isReferral ? 'To: ' + item.doctorName : item.doctorName}</div>
+            <div class="followup-last-visit">${item.isReferral ? 'Preferred Date' : 'Suggested Follow-up'}: ${formatDisplayDate(item.followUpDate)}</div>
           </div>
 
           <div class="doctor-notes-box">
-            <span class="notes-badge">Doctor's Notes (Read Only)</span>
+            <span class="notes-badge">${item.isReferral ? 'Referral Reason' : "Doctor's Notes (Read Only)"}</span>
             <div class="notes-text">${item.doctorNote}</div>
           </div>
 
-          <div class="followup-footer">
-            <div class="followup-date-section">
-              <span class="followup-date-label">Suggested follow-up date</span>
-              <span class="followup-date-value">${formatDisplayDate(item.followUpDate)}</span>
-            </div>
+          <div class="followup-footer" style="justify-content: flex-end;">
             <button class="btn btn-primary btn-sm book-btn" data-id="${item.id}">Book</button>
           </div>
         </div>
@@ -105,6 +120,14 @@ function renderFollowUps(items) {
   container.querySelectorAll('.book-btn').forEach((button) => {
     button.addEventListener('click', () => void openFollowUpModal(button.dataset.id));
   });
+}
+
+function renderFollowUps(items) {
+  const referrals = items.filter(item => item.isReferral);
+  const followups = items.filter(item => !item.isReferral);
+
+  renderList(referrals, 'referral-list', 'referral-empty');
+  renderList(followups, 'followup-list', 'followup-empty');
 }
 
 async function openFollowUpModal(id) {
@@ -246,6 +269,16 @@ async function confirmBooking() {
   if (!response.ok) {
     showToast(payload?.message || 'Unable to book follow-up.', 'error');
     return;
+  }
+
+  if (selectedFollowUp.isReferral) {
+    const referrals = JSON.parse(localStorage.getItem('referralHistory') || '[]');
+    const refIndex = parseInt(selectedFollowUp.id.split('-')[1]);
+    if (referrals[refIndex]) {
+      referrals[refIndex].status = 'Accepted';
+      referrals[refIndex].statusClass = 'badge-confirmed';
+      localStorage.setItem('referralHistory', JSON.stringify(referrals));
+    }
   }
 
   await loadFollowUps();

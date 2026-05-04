@@ -132,8 +132,8 @@ function renderDoctorQueue(container, queueItems, doctorId) {
 
     const nextAction =
       item.status === 'waiting'
-        ? '<button class="btn btn-outline btn-sm" data-next-status="in-progress">Start</button>'
-        : item.status === 'in-progress'
+        ? '<button class="btn btn-outline btn-sm" data-next-status="in-consultation">Start</button>'
+        : item.status === 'in-consultation'
           ? '<button class="btn btn-outline btn-sm" data-next-status="done">Done</button>'
           : '<span class="badge badge-completed">Done</span>';
 
@@ -180,6 +180,14 @@ function getInitials(str) {
 }
 
 async function updateDoctorQueueStatus(id, status, doctorId) {
+  if (status === 'in-consultation') {
+    const inConsultationCount = dashboardQueueItems.filter(item => item.status === 'in-consultation').length;
+    if (inConsultationCount >= 1) {
+      alert('Only one patient can be in consultation at a time.');
+      return;
+    }
+  }
+
   const response = await fetch(`${DOCTOR_API_BASE}/queue/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: {

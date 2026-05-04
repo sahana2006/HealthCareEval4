@@ -2855,7 +2855,7 @@
             "example": "waiting",
             "enum": [
               "waiting",
-              "in-progress",
+              "in-consultation",
               "done"
             ]
           }

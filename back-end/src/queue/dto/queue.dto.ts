@@ -14,9 +14,9 @@ export class CreateQueueDto {
 }
 
 export class UpdateQueueDto {
-  @ApiProperty({ example: 'waiting', enum: ['waiting', 'in-progress', 'done'] })
-  @IsString()
-  @IsIn(['waiting', 'in-progress', 'done'])
+  @ApiProperty({ example: 'waiting', enum: ['waiting', 'in-consultation', 'done'] })
   @IsNotEmpty()
-  status!: 'waiting' | 'in-progress' | 'done';
+  @IsIn(['waiting', 'in-consultation', 'done'])
+  @IsString()
+  status!: 'waiting' | 'in-consultation' | 'done';
 }

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { DoctorsService } from '../doctors/doctors.service';
 import { PatientsService } from '../patients/patients.service';
 
-export type QueueStatus = 'waiting' | 'in-progress' | 'done';
+export type QueueStatus = 'waiting' | 'in-consultation' | 'done';
 
 export type QueueItem = {
   id: string;
@@ -29,7 +29,7 @@ export class QueueService {
       doctorId: 'DOC003',
       userId: 'PAT001',
       tokenNumber: 1,
-      status: 'in-progress',
+      status: 'in-consultation',
     },
     {
       id: 'QUE002',
@@ -104,9 +104,9 @@ export class QueueService {
       throw new BadRequestException('Queue item not found');
     }
 
-    if (!['waiting', 'in-progress', 'done'].includes(input.status)) {
+    if (!['waiting', 'in-consultation', 'done'].includes(input.status)) {
       throw new BadRequestException(
-        'status must be waiting, in-progress, or done',
+        'status must be waiting, in-consultation, or done',
       );
     }
 
@@ -116,7 +116,7 @@ export class QueueService {
 
   private compareQueueItems(a: QueueItem, b: QueueItem) {
     const statusOrder: Record<QueueStatus, number> = {
-      'in-progress': 0,
+      'in-consultation': 0,
       waiting: 1,
       done: 2,
     };

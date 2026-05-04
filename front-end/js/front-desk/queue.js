@@ -154,10 +154,10 @@ function renderQueue() {
 
 function renderStatusButtons(item) {
   if (item.status === 'waiting') {
-    return `<button class="btn btn-outline btn-sm" data-id="${item.id}" data-next-status="in-progress">Start</button>`;
+    return `<button class="btn btn-outline btn-sm" data-id="${item.id}" data-next-status="in-consultation">Start</button>`;
   }
 
-  if (item.status === 'in-progress') {
+  if (item.status === 'in-consultation') {
     return `<button class="btn btn-outline btn-sm" data-id="${item.id}" data-next-status="done">Done</button>`;
   }
 
@@ -166,7 +166,7 @@ function renderStatusButtons(item) {
 
 function getBadgeClass(status) {
   switch (status) {
-    case 'in-progress':
+    case 'in-consultation':
       return 'badge-info';
     case 'done':
       return 'badge-success';
@@ -221,6 +221,21 @@ async function generateToken() {
 }
 
 async function updateQueueStatus(id, status) {
+  if (status === 'in-consultation') {
+    const itemToUpdate = queueItems.find(item => item.id === id);
+    if (itemToUpdate) {
+      const doctorId = itemToUpdate.doctorId;
+      const inConsultationCount = queueItems.filter(
+        item => item.doctorId === doctorId && item.status === 'in-consultation'
+      ).length;
+
+      if (inConsultationCount >= 1) {
+        showToast('Only one patient can be in-consultation at a time for this doctor.', 'error');
+        return;
+      }
+    }
+  }
+
   const response = await fetch(`${QUEUE_API_BASE_URL}/queue/${encodeURIComponent(id)}`, {
     method: 'PUT',
     headers: {
